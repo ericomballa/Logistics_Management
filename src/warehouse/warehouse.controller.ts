@@ -61,10 +61,7 @@ export class WarehouseController {
   })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'List of warehouses' })
-  findAll(
-    @Query('country') country?: string,
-    @Query('isActive') isActive?: boolean,
-  ) {
+  findAll(@Query('country') country?: string, @Query('isActive') isActive?: boolean) {
     return this.warehouseService.findAllWarehouses({ country, isActive });
   }
 
@@ -99,10 +96,7 @@ export class WarehouseController {
   @ApiParam({ name: 'id', description: 'Warehouse ID' })
   @ApiResponse({ status: 200, description: 'Warehouse updated successfully' })
   @ApiResponse({ status: 404, description: 'Warehouse not found' })
-  update(
-    @Param('id') id: string,
-    @Body() updateWarehouseDto: UpdateWarehouseDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateWarehouseDto: UpdateWarehouseDto) {
     return this.warehouseService.updateWarehouse(id, updateWarehouseDto);
   }
 
@@ -149,14 +143,11 @@ export class WarehouseController {
     status: 400,
     description: 'Invalid input or warehouse not found',
   })
-  addToInventory(
-    @Body() addToInventoryDto: AddToInventoryDto,
-    @CurrentUser() user: any,
-  ) {
+  addToInventory(@Body() addToInventoryDto: AddToInventoryDto, @CurrentUser() user: any) {
     return this.warehouseService.addToInventory(addToInventoryDto, user.userId);
   }
 
-  @Get('inventory')
+  @Get('inventory/get/all')
   @ApiOperation({ summary: 'Get inventory items with filters' })
   @ApiQuery({ name: 'warehouseId', required: false })
   @ApiQuery({ name: 'shipmentId', required: false })
@@ -164,6 +155,8 @@ export class WarehouseController {
   @ApiQuery({ name: 'location', required: false })
   @ApiResponse({ status: 200, description: 'List of inventory items' })
   getInventory(@Query() queryDto: QueryInventoryDto) {
+    console.log(queryDto);
+
     return this.warehouseService.getInventory(queryDto);
   }
 
@@ -196,10 +189,7 @@ export class WarehouseController {
     @Param('warehouseId') warehouseId: string,
     @Query('isInWarehouse') isInWarehouse?: boolean,
   ) {
-    return this.warehouseService.getInventoryByWarehouse(
-      warehouseId,
-      isInWarehouse,
-    );
+    return this.warehouseService.getInventoryByWarehouse(warehouseId, isInWarehouse);
   }
 
   @Delete('inventory/:id')

@@ -1,11 +1,7 @@
 // ============================================
 // src/warehouse/warehouse.service.ts
 // ============================================
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Warehouse } from './entities/warehouse.entity';
@@ -14,6 +10,7 @@ import { CreateWarehouseDto } from './dto/create-warehouse.dto';
 import { UpdateWarehouseDto } from './dto/update-warehouse.dto';
 import { AddToInventoryDto } from './dto/add-to-inventory.dto';
 import { QueryInventoryDto } from './dto/query-inventory.dto';
+import { InternalServerErrorException } from '@nestjs/common';
 
 @Injectable()
 export class WarehouseService {
@@ -26,9 +23,7 @@ export class WarehouseService {
 
   // ==================== WAREHOUSE METHODS ====================
 
-  async createWarehouse(
-    createWarehouseDto: CreateWarehouseDto,
-  ): Promise<Warehouse> {
+  async createWarehouse(createWarehouseDto: CreateWarehouseDto): Promise<Warehouse> {
     // Check if code already exists
     const existingWarehouse = await this.warehouseRepository.findOne({
       where: { code: createWarehouseDto.code },
@@ -100,10 +95,7 @@ export class WarehouseService {
     });
   }
 
-  async updateWarehouse(
-    id: string,
-    updateWarehouseDto: UpdateWarehouseDto,
-  ): Promise<Warehouse> {
+  async updateWarehouse(id: string, updateWarehouseDto: UpdateWarehouseDto): Promise<Warehouse> {
     const warehouse = await this.findWarehouse(id);
 
     // Check code uniqueness if changed
@@ -161,9 +153,7 @@ export class WarehouseService {
     });
 
     if (existingInventory) {
-      throw new BadRequestException(
-        'Shipment is already in warehouse inventory',
-      );
+      throw new BadRequestException('Shipment is already in warehouse inventory');
     }
 
     // Check capacity
@@ -186,19 +176,14 @@ export class WarehouseService {
     return savedInventory;
   }
 
-  async dispatchFromInventory(
-    inventoryId: string,
-    userId: string,
-  ): Promise<WarehouseInventory> {
+  async dispatchFromInventory(inventoryId: string, userId: string): Promise<WarehouseInventory> {
     const inventory = await this.inventoryRepository.findOne({
       where: { id: inventoryId },
       relations: ['warehouse'],
     });
 
     if (!inventory) {
-      throw new NotFoundException(
-        `Inventory item with ID ${inventoryId} not found`,
-      );
+      throw new NotFoundException(`Inventory item with ID ${inventoryId} not found`);
     }
 
     if (!inventory.isInWarehouse) {
@@ -218,50 +203,56 @@ export class WarehouseService {
     return savedInventory;
   }
 
-  async getInventory(
-    queryDto: QueryInventoryDto,
-  ): Promise<WarehouseInventory[]> {
-    const query = this.inventoryRepository
-      .createQueryBuilder('inventory')
-      .leftJoinAndSelect('inventory.warehouse', 'warehouse');
+  async getInventory(queryDto: QueryInventoryDto): Promise<WarehouseInventory[]> {
+    try {
+      const query = this.inventoryRepository
+        .createQueryBuilder('inventory')
+        .leftJoinAndSelect('inventory.warehouse', 'warehouse');
 
-    if (queryDto.warehouseId) {
-      query.andWhere('inventory.warehouseId = :warehouseId', {
-        warehouseId: queryDto.warehouseId,
-      });
+      if (queryDto.warehouseId) {
+        query.andWhere('inventory.warehouseId = :warehouseId', {
+          warehouseId: queryDto.warehouseId,
+        });
+      }
+
+      if (queryDto.shipmentId) {
+        query.andWhere('inventory.shipmentId = :shipmentId', {
+          shipmentId: queryDto.shipmentId,
+        });
+      }
+
+      if (queryDto.isInWarehouse !== undefined) {
+        query.andWhere('inventory.isInWarehouse = :isInWarehouse', {
+          isInWarehouse: queryDto.isInWarehouse,
+        });
+      }
+
+      if (queryDto.location) {
+        query.andWhere('inventory.location IS NOT NULL AND inventory.location ILIKE :location', {
+          location: `%${queryDto.location}%`,
+        });
+      }
+
+      if (queryDto.receivedFrom) {
+        query.andWhere(
+          'inventory.receivedAt IS NOT NULL AND inventory.receivedAt >= :receivedFrom',
+          {
+            receivedFrom: queryDto.receivedFrom,
+          },
+        );
+      }
+
+      if (queryDto.receivedTo) {
+        query.andWhere('inventory.receivedAt IS NOT NULL AND inventory.receivedAt <= :receivedTo', {
+          receivedTo: queryDto.receivedTo,
+        });
+      }
+
+      return await query.orderBy('inventory.receivedAt', 'DESC').getMany();
+    } catch (error) {
+      console.error('❌ INVENTORY QUERY FAILED', error);
+      throw new InternalServerErrorException('Erreur lors de la récupération de l’inventaire');
     }
-
-    if (queryDto.shipmentId) {
-      query.andWhere('inventory.shipmentId = :shipmentId', {
-        shipmentId: queryDto.shipmentId,
-      });
-    }
-
-    if (queryDto.isInWarehouse !== undefined) {
-      query.andWhere('inventory.isInWarehouse = :isInWarehouse', {
-        isInWarehouse: queryDto.isInWarehouse,
-      });
-    }
-
-    if (queryDto.location) {
-      query.andWhere('inventory.location ILIKE :location', {
-        location: `%${queryDto.location}%`,
-      });
-    }
-
-    if (queryDto.receivedFrom) {
-      query.andWhere('inventory.receivedAt >= :receivedFrom', {
-        receivedFrom: new Date(queryDto.receivedFrom),
-      });
-    }
-
-    if (queryDto.receivedTo) {
-      query.andWhere('inventory.receivedAt <= :receivedTo', {
-        receivedTo: new Date(queryDto.receivedTo),
-      });
-    }
-
-    return query.orderBy('inventory.receivedAt', 'DESC').getMany();
   }
 
   async getInventoryItem(id: string): Promise<WarehouseInventory> {
@@ -375,9 +366,7 @@ export class WarehouseService {
     });
 
     const occupancyRate =
-      warehouse.capacity > 0
-        ? ((warehouse.currentStock / warehouse.capacity) * 100).toFixed(2)
-        : 0;
+      warehouse.capacity > 0 ? ((warehouse.currentStock / warehouse.capacity) * 100).toFixed(2) : 0;
 
     return {
       warehouseId: warehouse.id,

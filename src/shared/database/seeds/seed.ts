@@ -72,6 +72,15 @@ async function bootstrap() {
       agencyId: ydAgency.id,
     });
 
+    const secretary= await usersService.create({
+      email: 'secretary@logistics.cm',
+      password: 'Secretary@123',
+      name: 'Secretary',
+      phone: '+237670000004',
+      role: UserRole.SECRETARY,
+      agencyId: cmAgency.id,
+    });
+
     const client = await usersService.create({
       email: 'client@example.com',
       password: 'Client@123',
