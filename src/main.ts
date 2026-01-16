@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
+import { join } from 'path';
 // import * as compression from 'compression';
 
 async function bootstrap() {
@@ -17,9 +18,14 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    origin: 'http://localhost:4200',
     credentials: true,
   });
+
+  // Serve static files from the 'public' directory
+  // app.useStaticAssets(join(__dirname, '..', 'public'), {
+  //   prefix: '/',
+  // });
 
   // Global prefix
   app.setGlobalPrefix('api/v1');
@@ -60,6 +66,7 @@ async function bootstrap() {
   console.log(`🚀 Application running on: http://localhost:${port}`);
   console.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
   console.log(`📋 API Base URL: http://localhost:${port}/api/v1`);
+  console.log(`🌐 Frontend: http://localhost:${port}`);
 }
 
 bootstrap();

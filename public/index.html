@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLH - Système de Gestion d'Expéditions</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>DLH - Système de Gestion d'Expéditions</h1>
+            <nav>
+                <ul>
+                    <li><a href="#dashboard">Tableau de bord</a></li>
+                    <li><a href="#shipments">Expéditions</a></li>
+                    <li><a href="#tracking">Suivi</a></li>
+                    <li><a href="#reports">Rapports</a></li>
+                    <li><a href="#login" id="auth-link">Connexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Section Connexion/Inscription -->
+        <section id="auth-section" class="hidden">
+            <div class="auth-container">
+                <div class="auth-form" id="login-form">
+                    <h2>Connexion</h2>
+                    <form id="loginForm">
+                        <input type="email" id="loginEmail" placeholder="Email" required>
+                        <input type="password" id="loginPassword" placeholder="Mot de passe" required>
+                        <button type="submit">Se connecter</button>
+                    </form>
+                    <p>Pas encore de compte? <a href="#" id="show-register">S'inscrire</a></p>
+                </div>
+                
+                <div class="auth-form hidden" id="register-form">
+                    <h2>Inscription</h2>
+                    <form id="registerForm">
+                        <input type="text" id="registerName" placeholder="Nom" required>
+                        <input type="email" id="registerEmail" placeholder="Email" required>
+                        <input type="password" id="registerPassword" placeholder="Mot de passe" required>
+                        <input type="password" id="registerConfirmPassword" placeholder="Confirmer mot de passe" required>
+                        <button type="submit">S'inscrire</button>
+                    </form>
+                    <p>Déjà un compte? <a href="#" id="show-login">Se connecter</a></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section Tableau de bord -->
+        <section id="dashboard-section" class="hidden">
+            <h2>Tableau de bord</h2>
+            <div class="stats-container">
+                <div class="stat-card">
+                    <h3>Total Expéditions</h3>
+                    <p id="totalShipments">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>En cours</h3>
+                    <p id="inTransitShipments">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Livrées</h3>
+                    <p id="deliveredShipments">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Récemment ajoutées</h3>
+                    <p id="recentShipments">0</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section Expéditions -->
+        <section id="shipments-section" class="hidden">
+            <h2>Gestion des Expéditions</h2>
+            
+            <div class="shipment-form-container">
+                <h3>Ajouter une nouvelle expédition</h3>
+                <form id="shipmentForm">
+                    <div class="form-row">
+                        <input type="text" id="senderName" placeholder="Nom de l'expéditeur" required>
+                        <input type="text" id="senderAddress" placeholder="Adresse de l'expéditeur" required>
+                    </div>
+                    <div class="form-row">
+                        <input type="text" id="recipientName" placeholder="Nom du destinataire" required>
+                        <input type="text" id="recipientAddress" placeholder="Adresse du destinataire" required>
+                    </div>
+                    <div class="form-row">
+                        <input type="text" id="weight" placeholder="Poids (kg)" required>
+                        <input type="text" id="dimensions" placeholder="Dimensions (L×l×h)" required>
+                    </div>
+                    <div class="form-row">
+                        <input type="date" id="estimatedDeliveryDate" placeholder="Date de livraison estimée" required>
+                        <select id="serviceType">
+                            <option value="">Sélectionner le service</option>
+                            <option value="standard">Standard</option>
+                            <option value="express">Express</option>
+                            <option value="overnight">Overnight</option>
+                        </select>
+                    </div>
+                    <button type="submit">Créer l'expédition</button>
+                </form>
+            </div>
+            
+            <div class="shipments-list-container">
+                <h3>Liste des expéditions</h3>
+                <div class="search-filter">
+                    <input type="text" id="searchShipments" placeholder="Rechercher par numéro de suivi...">
+                    <button id="searchBtn">Rechercher</button>
+                </div>
+                <table id="shipmentsTable">
+                    <thead>
+                        <tr>
+                            <th>Numéro de suivi</th>
+                            <th>Expéditeur</th>
+                            <th>Destinataire</th>
+                            <th>Date de création</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shipmentsTableBody">
+                        <!-- Les expéditions seront ajoutées ici dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section Suivi -->
+        <section id="tracking-section" class="hidden">
+            <h2>Suivi des Expéditions</h2>
+            <div class="tracking-search-container">
+                <input type="text" id="trackingNumberInput" placeholder="Entrez le numéro de suivi">
+                <button id="trackShipmentBtn">Suivre l'expédition</button>
+            </div>
+            <div id="trackingResult" class="tracking-result hidden">
+                <h3>Informations de suivi</h3>
+                <div id="shipmentDetails"></div>
+                <div id="trackingTimeline"></div>
+            </div>
+        </section>
+
+        <!-- Section Rapports -->
+        <section id="reports-section" class="hidden">
+            <h2>Rapports</h2>
+            <div class="report-filters">
+                <label for="startDate">Date de début:</label>
+                <input type="date" id="startDate">
+                <label for="endDate">Date de fin:</label>
+                <input type="date" id="endDate">
+                <button id="generateReportBtn">Générer le rapport</button>
+            </div>
+            <div id="reportsContainer">
+                <canvas id="shipmentsChart" width="400" height="200"></canvas>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 DLH - Tous droits réservés</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

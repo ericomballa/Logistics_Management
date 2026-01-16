@@ -18,5 +18,10 @@ export class UpdateShipmentDto extends PartialType(CreateShipmentDto) {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  currentLocationCountry?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
   warehouseId?: string;
 }

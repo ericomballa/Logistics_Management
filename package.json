@@ -31,9 +31,9 @@
     "docker:logs": "docker-compose logs -f",
     "docker:clean": "docker-compose down -v",
     "setup": "npm install && npm run docker:up && sleep 10 && npm run migration:run && npm run seed"
-    
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.3",
     "@nestjs/bull": "^11.0.4",
     "@nestjs/common": "^10.3.0",
     "@nestjs/config": "^3.1.1",

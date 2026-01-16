@@ -86,7 +86,7 @@ export class BillingService {
     };
   }
 
-  // ==================== INVOICE METHODS ====================
+  // ==================== INVOICE METHODS ==================
 
   async createInvoice(createInvoiceDto: CreateInvoiceDto): Promise<Invoice> {
     // Generate invoice number

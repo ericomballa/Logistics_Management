@@ -25,10 +25,7 @@ export class ShipmentsController {
 
   @Post()
   @ApiOperation({ summary: 'Create shipment' })
-  create(
-    @Body() createShipmentDto: CreateShipmentDto,
-    @CurrentUser() user: any,
-  ) {
+  create(@Body() createShipmentDto: CreateShipmentDto, @CurrentUser() user: any) {
     return this.shipmentsService.create(createShipmentDto, user.userId);
   }
 

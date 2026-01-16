@@ -16,13 +16,8 @@ export class ShipmentsService {
     private trackingService: TrackingService,
   ) {}
 
-  async create(
-    createShipmentDto: CreateShipmentDto,
-    userId: string,
-  ): Promise<Shipment> {
-    const trackingNumber = this.generateTrackingNumber(
-      createShipmentDto.origin,
-    );
+  async create(createShipmentDto: CreateShipmentDto, userId: string): Promise<Shipment> {
+    const trackingNumber = this.generateTrackingNumber(createShipmentDto.origin);
 
     const shipment = this.shipmentsRepository.create({
       ...createShipmentDto,
@@ -106,17 +101,22 @@ export class ShipmentsService {
     updateShipmentDto: UpdateShipmentDto,
     userId?: string,
   ): Promise<Shipment> {
+    console.log(updateShipmentDto);
+
     const shipment = await this.findOne(id);
 
+    console.log(shipment);
+
     // Track status changes
-    if (
-      updateShipmentDto.status &&
-      updateShipmentDto.status !== shipment.status
-    ) {
+    if (updateShipmentDto.status && updateShipmentDto.status !== shipment.status) {
       await this.trackingService.createEvent({
         shipmentId: id,
         status: updateShipmentDto.status,
-        location: updateShipmentDto.currentLocation || shipment.currentLocation,
+        location:
+          updateShipmentDto.currentLocationCountry ||
+          updateShipmentDto.currentLocation ||
+          shipment.currentLocation ||
+          shipment.origin,
         country: shipment.destination,
         description: `Status updated to ${updateShipmentDto.status}`,
         actor: userId ? 'AGENT' : 'SYSTEM',

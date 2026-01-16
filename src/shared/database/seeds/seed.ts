@@ -35,7 +35,7 @@ async function bootstrap() {
       email: 'yaounde@logistics.cm',
     });
 
-    // 2. Create Users
+    // 2. Create User
     console.log('👥 Creating users...');
     const superAdmin = await usersService.create({
       email: 'admin@logistics.cm',

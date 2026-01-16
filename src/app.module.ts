@@ -32,6 +32,10 @@ import { User } from './users/entities/user.entity';
 import { Agency } from './users/entities/agency.entity';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { WhatsappUser } from './whatsapp/entities/whatsapp-user.entity';
+import { Conversation } from './whatsapp/entities/conversation.entity';
+import { Message } from './whatsapp/entities/message.entity';
 
 @Module({
   imports: [
@@ -42,7 +46,7 @@ import { ConfigModule } from '@nestjs/config';
       username: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_NAME || 'logistics',
-      entities: [User, Agency],
+      entities: [User, Agency, WhatsappUser, Conversation, Message],
       synchronize: true, // ❗ false en prod
       autoLoadEntities: true, // ⭐ recommandé
     }),
@@ -63,6 +67,7 @@ import { ConfigModule } from '@nestjs/config';
     NotificationsModule,
     ReportsModule,
     HealthModule,
+    WhatsappModule,
   ],
 })
 export class AppModule {}
