@@ -30,12 +30,14 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './users/entities/user.entity';
 import { Agency } from './users/entities/agency.entity';
+import { Role } from './users/entities/role.entity';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { WhatsappUser } from './whatsapp/entities/whatsapp-user.entity';
 import { Conversation } from './whatsapp/entities/conversation.entity';
 import { Message } from './whatsapp/entities/message.entity';
+import { SeedModule } from './shared/modules/seed.module';
 
 @Module({
   imports: [
@@ -46,7 +48,7 @@ import { Message } from './whatsapp/entities/message.entity';
       username: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_NAME || 'logistics',
-      entities: [User, Agency, WhatsappUser, Conversation, Message],
+      entities: [User, Agency, Role, WhatsappUser, Conversation, Message],
       synchronize: true, // ❗ false en prod
       autoLoadEntities: true, // ⭐ recommandé
     }),
@@ -68,6 +70,7 @@ import { Message } from './whatsapp/entities/message.entity';
     ReportsModule,
     HealthModule,
     WhatsappModule,
+    SeedModule, // Ajouter le module de seeding
   ],
 })
 export class AppModule {}

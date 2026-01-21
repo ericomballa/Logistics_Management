@@ -18,7 +18,7 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: 'http://localhost:4200',
+    origin: true,
     credentials: true,
   });
 
