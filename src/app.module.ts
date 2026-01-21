@@ -50,7 +50,7 @@ import { Message } from './whatsapp/entities/message.entity';
       url: process.env.DATABASE_URL,
       entities: [User, Agency, WhatsappUser, Conversation, Message],
       synchronize: true, // ❗ false en prod
-      autoLoadEntities: true, // ⭐ recommandé
+      autoLoadEntities: true,
     }),
 
     ConfigModule.forRoot({
