@@ -334,7 +334,7 @@ Veuillez fournir ces détails pour que je puisse créer votre envoi.
       if (trackingNumber && note) {
         try {
           // Trouver le colis
-          const shipment = await this.shipmentService.findByTrackingNumber(trackingNumber);
+          await this.shipmentService.findByTrackingNumber(trackingNumber);
 
           // Ajouter un événement de suivi (vous devrez peut-être étendre le service pour cela)
           await this.whatsappService.sendTextMessage(

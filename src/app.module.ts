@@ -56,7 +56,7 @@ import { Message } from './whatsapp/entities/message.entity';
     }),
 
     // ✅ MongoDB (TRACKING)
-    MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb://localhost:27017/tracking'),
+    MongooseModule.forRoot(process.env.MONGODB_URI),
 
     AuthModule,
     UsersModule,

@@ -12,21 +12,9 @@ import { WhatsappWebhookController } from './controllers/webhook.controller';
 import { ShipmentsModule } from '../shipments/shipments.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([WhatsappUser, Conversation, Message, User]),
-    ShipmentsModule,
-  ],
+  imports: [TypeOrmModule.forFeature([WhatsappUser, Conversation, Message, User]), ShipmentsModule],
   controllers: [WhatsappWebhookController],
-  providers: [
-    WhatsappApiService,
-    AIService,
-    ConversationService,
-    WhatsappBotOrchestrator,
-  ],
-  exports: [
-    WhatsappApiService,
-    ConversationService,
-    WhatsappBotOrchestrator,
-  ],
+  providers: [WhatsappApiService, AIService, ConversationService, WhatsappBotOrchestrator],
+  exports: [WhatsappApiService, ConversationService, WhatsappBotOrchestrator],
 })
 export class WhatsappModule {}

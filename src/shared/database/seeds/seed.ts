@@ -35,9 +35,9 @@ async function bootstrap() {
       email: 'yaounde@logistics.cm',
     });
 
-    // 2. Create User
+    // 2. Create Users
     console.log('👥 Creating users...');
-    const superAdmin = await usersService.create({
+    await usersService.create({
       email: 'admin@logistics.cm',
       password: 'Admin@123',
       name: 'Super Admin',
@@ -45,7 +45,7 @@ async function bootstrap() {
       role: UserRole.SUPER_ADMIN,
     });
 
-    const admin = await usersService.create({
+    await usersService.create({
       email: 'manager@logistics.cm',
       password: 'Manager@123',
       name: 'John Manager',
@@ -54,7 +54,7 @@ async function bootstrap() {
       agencyId: cmAgency.id,
     });
 
-    const agent11 = await usersService.create({
+    await usersService.create({
       email: 'agent1@logistics.cm',
       password: 'Agent@123',
       name: 'Agent Douala',
@@ -63,7 +63,7 @@ async function bootstrap() {
       agencyId: cmAgency.id,
     });
 
-    const agent2 = await usersService.create({
+    await usersService.create({
       email: 'agent2@logistics.cm',
       password: 'Agent@123',
       name: 'Agent Yaoundé',
@@ -72,7 +72,7 @@ async function bootstrap() {
       agencyId: ydAgency.id,
     });
 
-    const secretary= await usersService.create({
+    await usersService.create({
       email: 'secretary@logistics.cm',
       password: 'Secretary@123',
       name: 'Secretary',
@@ -81,7 +81,7 @@ async function bootstrap() {
       agencyId: cmAgency.id,
     });
 
-    const client = await usersService.create({
+    await usersService.create({
       email: 'client@example.com',
       password: 'Client@123',
       name: 'Test Client',
@@ -91,7 +91,7 @@ async function bootstrap() {
 
     // 3. Create Warehouses
     console.log('🏭 Creating warehouses...');
-    const chinaWarehouse = await warehouseService.createWarehouse({
+    await warehouseService.createWarehouse({
       name: 'Shanghai Warehouse',
       code: 'CN-SHA',
       country: 'China',
@@ -102,7 +102,7 @@ async function bootstrap() {
       capacity: 10000,
     });
 
-    const dubaiWarehouse = await warehouseService.createWarehouse({
+    await warehouseService.createWarehouse({
       name: 'Dubai Hub',
       code: 'AE-DXB',
       country: 'Dubai',
@@ -113,7 +113,7 @@ async function bootstrap() {
       capacity: 8000,
     });
 
-    const doualaWarehouse = await warehouseService.createWarehouse({
+    await warehouseService.createWarehouse({
       name: 'Douala Main Warehouse',
       code: 'CM-DLA',
       country: 'Cameroon',
@@ -124,7 +124,7 @@ async function bootstrap() {
       capacity: 5000,
     });
 
-    const yaoundeWarehouse = await warehouseService.createWarehouse({
+    await warehouseService.createWarehouse({
       name: 'Yaoundé Distribution Center',
       code: 'CM-YDE',
       country: 'Cameroon',
