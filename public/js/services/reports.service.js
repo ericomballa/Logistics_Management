@@ -42,6 +42,15 @@ class ReportsService {
     async getAverageDeliveryTime() {
         return await api.get('/reports/delivery-time');
     }
+
+    /**
+     * Get daily revenue report
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @returns {Promise<Object>} Daily revenue data
+     */
+    async getDailyRevenue(date) {
+        return await api.get(`/reports/revenue/daily?date=${date}`);
+    }
 }
 
 export const reportsService = new ReportsService();

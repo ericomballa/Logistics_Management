@@ -3,7 +3,12 @@ import { api } from './api.js';
 export const dataService = {
     // Shipments
     async getShipmentStats() { return api.get('/shipments/stats'); },
-    async getShipments(query = '') { return api.get(`/shipments?${query}`); },
+    async getShipments(query = '', page = 1, limit = 10) {
+      const params = new URLSearchParams(query);
+      params.append('page', page);
+      params.append('limit', limit);
+      return api.get(`/shipments?${params.toString()}`);
+    },
     async getShipment(id) { return api.get(`/shipments/${id}`); },
     async createShipment(data) { return api.post('/shipments', data); },
     async updateShipment(id, data) { return api.patch(`/shipments/${id}`, data); },
@@ -37,7 +42,12 @@ export const dataService = {
 
     // Billing
     async getInvoiceStats() { return api.get('/billing/invoices/stats'); },
-    async getInvoices(query = '') { return api.get(`/billing/invoices?${query}`); },
+    async getInvoices(query = '', page = 1, limit = 10) {
+      const params = new URLSearchParams(query);
+      params.append('page', page);
+      params.append('limit', limit);
+      return api.get(`/billing/invoices?${params.toString()}`);
+    },
     async getInvoice(id) { return api.get(`/billing/invoices/${id}`); },
     async createInvoice(data) { return api.post('/billing/invoices', data); },
     async updateInvoice(id, data) { return api.patch(`/billing/invoices/${id}`, data); },

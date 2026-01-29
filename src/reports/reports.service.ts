@@ -130,4 +130,53 @@ export class ReportsService {
       totalShipments: deliveredShipments.length,
     };
   }
+
+  async getDailyRevenue(date: Date) {
+    // Format the date to start of day and end of day
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const invoices = await this.invoicesRepository.find({
+      where: {
+        createdAt: Between(startOfDay, endOfDay),
+      },
+    });
+
+    const totalAmount = invoices.reduce(
+      (sum, inv) => sum + parseFloat(inv.total.toString()),
+      0,
+    );
+    const paidAmount = invoices.reduce(
+      (sum, inv) => sum + parseFloat(inv.amountPaid.toString()),
+      0,
+    );
+
+    // Group invoices by status
+    const byStatus = invoices.reduce((acc, inv) => {
+      if (!acc[inv.status]) {
+        acc[inv.status] = { count: 0, total: 0, paid: 0 };
+      }
+      acc[inv.status].count += 1;
+      acc[inv.status].total += parseFloat(inv.total.toString());
+      acc[inv.status].paid += parseFloat(inv.amountPaid.toString());
+      return acc;
+    }, {});
+
+    return {
+      date: date.toISOString().split('T')[0],
+      totalInvoices: invoices.length,
+      totalAmount,
+      paidAmount,
+      pendingAmount: totalAmount - paidAmount,
+      byStatus: Object.keys(byStatus).map(status => ({
+        status,
+        count: byStatus[status].count,
+        total: byStatus[status].total,
+        paid: byStatus[status].paid
+      }))
+    };
+  }
 }

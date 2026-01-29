@@ -93,6 +93,22 @@ export class ShipmentsView extends BaseView {
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Pagination Controls -->
+                    <div class="pagination-controls" style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem;">
+                        <div id="pagination-info" style="color:var(--text-light); font-size:0.9em;">
+                            Affichage de <span id="pagination-start">0</span> à <span id="pagination-end">0</span> sur <span id="pagination-total">0</span> colis
+                        </div>
+                        <div class="pagination-buttons">
+                            <button id="prev-page" class="btn btn-outline" disabled>
+                                <i class="fa-solid fa-chevron-left"></i> Précédent
+                            </button>
+                            <span id="current-page" style="margin:0 1rem; min-width:30px; display:inline-block; text-align:center;">1</span>
+                            <button id="next-page" class="btn btn-outline" disabled>
+                                Suivant <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -131,7 +147,7 @@ export class ShipmentsView extends BaseView {
         this.loadClients();
         this.loadStaff(); // Load staff for sender
         this.setupDetailsModal();
-        this.loadShipments();
+        this.loadShipments('', 1);
     }
 
     async loadStaff() {
@@ -166,6 +182,11 @@ export class ShipmentsView extends BaseView {
         } catch (e) { console.error('Clients load error', e); }
     }
 
+    currentPage = 1;
+    totalPages = 1;
+    itemsPerPage = 10;
+    currentQuery = '';
+
     bindEvents() {
         document.getElementById('shipment-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -190,14 +211,34 @@ export class ShipmentsView extends BaseView {
                 await dataService.createShipment(data);
                 toast.success('Expédition créée');
                 e.target.reset();
-                this.loadShipments();
+                this.loadShipments(this.currentQuery, this.currentPage);
             } catch (err) {
                 toast.error(err.message || 'Erreur création');
             }
         });
 
         document.getElementById('search-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.loadShipments(e.target.value ? `trackingNumber=${e.target.value}` : '');
+            if (e.key === 'Enter') {
+                const searchValue = e.target.value.trim();
+                this.currentQuery = searchValue ? `search=${encodeURIComponent(searchValue)}` : '';
+                this.currentPage = 1;
+                this.loadShipments(this.currentQuery, this.currentPage);
+            }
+        });
+
+        // Pagination Events
+        document.getElementById('prev-page').addEventListener('click', () => {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.loadShipments(this.currentQuery, this.currentPage);
+            }
+        });
+
+        document.getElementById('next-page').addEventListener('click', () => {
+            if (this.currentPage < this.totalPages) {
+                this.currentPage++;
+                this.loadShipments(this.currentQuery, this.currentPage);
+            }
         });
 
         // Modal Logic
@@ -220,7 +261,7 @@ export class ShipmentsView extends BaseView {
                 await dataService.updateShipment(id, { status, currentLocation: location });
                 toast.success('Statut mis à jour');
                 hideModal();
-                this.loadShipments();
+                this.loadShipments(this.currentQuery, this.currentPage);
             } catch (err) {
                 toast.error('Erreur mise à jour');
             }
@@ -237,7 +278,7 @@ export class ShipmentsView extends BaseView {
                     try {
                         await dataService.deleteShipment(id);
                         toast.success('Supprimé');
-                        this.loadShipments();
+                        this.loadShipments(this.currentQuery, this.currentPage);
                     } catch (err) { toast.error('Erreur supression'); }
                 }
             } else if (btn.classList.contains('copy-btn')) {
@@ -259,11 +300,17 @@ export class ShipmentsView extends BaseView {
         });
     }
 
-    async loadShipments(query = '') {
+    async loadShipments(query = '', page = 1) {
         try {
-            const res = await dataService.getShipments(query);
-            const list = res.data || res;
+            const res = await dataService.getShipments(query, page, this.itemsPerPage);
+            const { data: list, total, page: currentPage, limit } = res;
+
+            this.totalPages = Math.ceil(total / this.itemsPerPage);
+            this.currentPage = currentPage;
+
             const tbody = document.getElementById('shipments-table-body');
+            const startIndex = (currentPage - 1) * this.itemsPerPage + 1;
+            const endIndex = Math.min(currentPage * this.itemsPerPage, total);
 
             if (list.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Aucune expédition</td></tr>';
@@ -283,6 +330,16 @@ export class ShipmentsView extends BaseView {
                     </tr>
                 `).join('');
             }
+
+            // Update pagination info
+            document.getElementById('pagination-start').textContent = startIndex;
+            document.getElementById('pagination-end').textContent = endIndex;
+            document.getElementById('pagination-total').textContent = total;
+            document.getElementById('current-page').textContent = currentPage;
+
+            // Update pagination buttons
+            document.getElementById('prev-page').disabled = currentPage <= 1;
+            document.getElementById('next-page').disabled = currentPage >= this.totalPages;
         } catch (err) {
             console.error(err);
         }

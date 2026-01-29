@@ -50,4 +50,13 @@ export class ReportsController {
   getAverageDeliveryTime() {
     return this.reportsService.getAverageDeliveryTime();
   }
+
+  @Get('revenue/daily')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get daily revenue report' })
+  getDailyRevenue(
+    @Query('date') date: string,
+  ) {
+    return this.reportsService.getDailyRevenue(new Date(date));
+  }
 }

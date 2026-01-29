@@ -81,6 +81,50 @@ export class ReportsView extends BaseView {
                 </div>
             </div>
 
+            <!-- Daily Revenue Report -->
+            <div class="glass-panel" style="margin-bottom:2rem;">
+                <h3 style="margin-bottom:1rem;"><i class="fa-solid fa-calendar-day"></i> Revenus Journaliers</h3>
+
+                <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items: flex-end;">
+                    <div style="flex:1; min-width:200px;">
+                        <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Sélectionner une date</label>
+                        <input type="date" id="daily-revenue-date" class="input no-icon" style="width:100%;">
+                    </div>
+                    <button id="load-daily-revenue-btn" class="btn btn-primary" style="height: 48px;">
+                        <i class="fa-solid fa-search"></i> Charger
+                    </button>
+                </div>
+
+                <div id="daily-revenue-data" style="display:none;">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+                        <div style="padding:1rem; background:rgba(99,102,241,0.1); border-radius:12px; border:1px solid rgba(99,102,241,0.3);">
+                            <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:0.5rem;">Total Factures</div>
+                            <div id="daily-revenue-total-invoices" style="font-size:1.5rem; font-weight:700; color:var(--primary);">-</div>
+                        </div>
+                        <div style="padding:1rem; background:rgba(16,185,129,0.1); border-radius:12px; border:1px solid rgba(16,185,129,0.3);">
+                            <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:0.5rem;">Montant Total</div>
+                            <div id="daily-revenue-total-amount" style="font-size:1.5rem; font-weight:700; color:var(--success);">-</div>
+                        </div>
+                        <div style="padding:1rem; background:rgba(16,185,129,0.1); border-radius:12px; border:1px solid rgba(16,185,129,0.3);">
+                            <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:0.5rem;">Montant Payé</div>
+                            <div id="daily-revenue-paid-amount" style="font-size:1.5rem; font-weight:700; color:var(--success);">-</div>
+                        </div>
+                        <div style="padding:1rem; background:rgba(245,158,11,0.1); border-radius:12px; border:1px solid rgba(245,158,11,0.3);">
+                            <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:0.5rem;">Montant En Attente</div>
+                            <div id="daily-revenue-pending-amount" style="font-size:1.5rem; font-weight:700; color:var(--warning);">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Revenue by Status -->
+                    <div style="margin-top:1.5rem;">
+                        <h4 style="margin-bottom:1rem; color:var(--text-light);">Répartition par Statut</h4>
+                        <div id="daily-revenue-by-status" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:1rem;">
+                            <!-- Status breakdown will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Average Delivery Time -->
             <div class="glass-panel">
                 <h3 style="margin-bottom:1rem;"><i class="fa-solid fa-clock"></i> Temps de Livraison Moyen</h3>
@@ -102,8 +146,14 @@ export class ReportsView extends BaseView {
         // Bind revenue report button
         this.bindRevenueReport();
 
+        // Bind daily revenue report button
+        this.bindDailyRevenueReport();
+
         // Set default dates (last 30 days)
         this.setDefaultDates();
+
+        // Set today's date as default for daily revenue
+        this.setTodayAsDefaultDailyRevenueDate();
     }
 
     async loadDashboardStats() {
@@ -371,6 +421,92 @@ export class ReportsView extends BaseView {
         }
     }
 
+    bindDailyRevenueReport() {
+        const btn = document.getElementById('load-daily-revenue-btn');
+        if (btn) {
+            btn.addEventListener('click', async () => {
+                const date = document.getElementById('daily-revenue-date').value;
+
+                if (!date) {
+                    alert('Veuillez sélectionner une date');
+                    return;
+                }
+
+                try {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Chargement...';
+
+                    const data = await reportsService.getDailyRevenue(date);
+
+                    document.getElementById('daily-revenue-total-invoices').textContent = data.totalInvoices || 0;
+                    document.getElementById('daily-revenue-total-amount').textContent = this.formatCurrency(data.totalAmount || 0);
+                    document.getElementById('daily-revenue-paid-amount').textContent = this.formatCurrency(data.paidAmount || 0);
+                    document.getElementById('daily-revenue-pending-amount').textContent = this.formatCurrency(data.pendingAmount || 0);
+
+                    // Populate revenue by status
+                    this.populateDailyRevenueByStatus(data.byStatus);
+
+                    document.getElementById('daily-revenue-data').style.display = 'block';
+                } catch (err) {
+                    console.error('Error loading daily revenue:', err);
+                    alert('Erreur lors du chargement du rapport de revenus journaliers');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-search"></i> Charger';
+                }
+            });
+        }
+    }
+
+    populateDailyRevenueByStatus(byStatusData) {
+        const container = document.getElementById('daily-revenue-by-status');
+        if (!byStatusData || byStatusData.length === 0) {
+            container.innerHTML = '<p>Aucune donnée disponible</p>';
+            return;
+        }
+
+        // Status labels in French
+        const statusLabels = {
+            'PENDING': 'En Attente',
+            'PARTIAL': 'Partiel',
+            'PAID': 'Payé',
+            'CANCELLED': 'Annulé',
+            'OVERDUE': 'En Retard'
+        };
+
+        container.innerHTML = byStatusData.map(item => {
+            // Determine color based on status
+            let colorClass = 'primary';
+            if (item.status === 'PAID') colorClass = 'success';
+            else if (item.status === 'PENDING' || item.status === 'PARTIAL') colorClass = 'warning';
+            else if (item.status === 'CANCELLED') colorClass = 'danger';
+
+            return `
+                <div class="glass-panel" style="padding:1rem; border-left:4px solid var(--${colorClass});">
+                    <div style="font-weight:600; color:var(--${colorClass}); margin-bottom:0.5rem;">${statusLabels[item.status] || item.status}</div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
+                        <span>Factures:</span>
+                        <strong>${item.count}</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
+                        <span>Total:</span>
+                        <strong>${this.formatCurrency(item.total)}</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Payé:</span>
+                        <strong>${this.formatCurrency(item.paid)}</strong>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    setTodayAsDefaultDailyRevenueDate() {
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById('daily-revenue-date');
+        if (dateInput) dateInput.value = today;
+    }
+
     setDefaultDates() {
         const endDate = new Date();
         const startDate = new Date();
@@ -386,7 +522,7 @@ export class ReportsView extends BaseView {
     formatCurrency(amount) {
         return new Intl.NumberFormat('fr-FR', {
             style: 'currency',
-            currency: 'EUR'
+            currency: 'XAF'
         }).format(amount);
     }
 
