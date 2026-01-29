@@ -26,11 +26,14 @@
     "migration:revert": "npm run typeorm -- migration:revert -d src/shared/database/typeorm.config.ts",
     "seed": "ts-node src/shared/database/seeds/seed.ts",
     "seed:prod": "node dist/shared/database/seeds/seed.js",
+    "docker:mongo-up": "docker compose -f docker-compose.mongodb.yml up -d",
+    "docker:mongo-down": "docker compose -f docker-compose.mongodb.yml down",
+    "docker:mongo-logs": "docker compose -f docker-compose.mongodb.yml logs -f",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "docker:clean": "docker-compose down -v",
-    "setup": "npm install && npm run docker:up && sleep 10 && npm run migration:run && npm run seed"
+    "setup": "npm install && npm run docker:up && npm run docker:mongo-up && sleep 10 && npm run migration:run && npm run seed"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",

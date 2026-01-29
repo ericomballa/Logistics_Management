@@ -4,6 +4,11 @@ import { OriginCountry } from '../enums/origin-country.enum';
 import { DestinationCountry } from '../enums/destination-country.enum';
 
 export class CreateShipmentDto {
+  constructor() {
+    console.log('CreateShipmentDto initialized, OriginCountry:', OriginCountry);
+    console.log('DestinationCountry enum:', DestinationCountry);
+  }
+
   @ApiProperty()
   @IsString()
   senderName: string;
@@ -13,35 +18,84 @@ export class CreateShipmentDto {
   @IsString()
   senderPhone?: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false, description: 'ID of the client (if different from creator)' })
+  @IsOptional()
   @IsString()
-  receiverName: string;
+  clientId?: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  receiverPhone: string;
+  senderAddress?: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  receiverAddress: string;
+  receiverName?: string; // Payload uses recipientName
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  receiverAddress?: string; // Payload uses recipientAddress
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  receiverPhone?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   receiverCity?: string;
 
-  @ApiProperty({ enum: OriginCountry })
-  @IsEnum(OriginCountry)
-  origin: OriginCountry;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  originCity?: string;
 
-  @ApiProperty({ enum: DestinationCountry })
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  destinationCity?: string;
+
+  // Payload fields
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  recipientName?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  recipientAddress?: string;
+
+  @ApiProperty({ enum: OriginCountry, required: false })
+  @IsOptional()
+  @IsEnum(OriginCountry)
+  origin?: any;
+
+  @ApiProperty({ enum: DestinationCountry, required: false })
+  @IsOptional()
   @IsEnum(DestinationCountry)
-  destination: DestinationCountry;
+  destination?: any;
 
   @ApiProperty()
   @IsNumber()
-  @Min(0)
   weight: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  dimensions?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  estimatedDeliveryDate?: string | Date;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  serviceType?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

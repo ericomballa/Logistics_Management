@@ -28,15 +28,15 @@ export class WhatsappApiService {
           type: 'text',
           text: {
             preview_url: false,
-            body: message
-          }
+            body: message,
+          },
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        }
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
       );
 
       this.logger.log(`Message envoyé à ${to}`);
@@ -47,7 +47,11 @@ export class WhatsappApiService {
     }
   }
 
-  async sendTemplateMessage(to: string, templateName: string, languageCode: string = 'fr'): Promise<any> {
+  async sendTemplateMessage(
+    to: string,
+    templateName: string,
+    languageCode: string = 'fr',
+  ): Promise<any> {
     try {
       const url = `${this.apiUrl}/${this.phoneNumberId}/messages`;
 
@@ -60,16 +64,16 @@ export class WhatsappApiService {
           template: {
             name: templateName,
             language: {
-              code: languageCode
-            }
-          }
+              code: languageCode,
+            },
+          },
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        }
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
       );
 
       return response.data;
@@ -79,7 +83,11 @@ export class WhatsappApiService {
     }
   }
 
-  async sendInteractiveButtons(to: string, bodyText: string, buttons: Array<{id: string, title: string}>): Promise<any> {
+  async sendInteractiveButtons(
+    to: string,
+    bodyText: string,
+    buttons: Array<{ id: string; title: string }>,
+  ): Promise<any> {
     try {
       const url = `${this.apiUrl}/${this.phoneNumberId}/messages`;
 
@@ -93,25 +101,25 @@ export class WhatsappApiService {
           interactive: {
             type: 'button',
             body: {
-              text: bodyText
+              text: bodyText,
             },
             action: {
-              buttons: buttons.map(btn => ({
+              buttons: buttons.map((btn) => ({
                 type: 'reply',
                 reply: {
                   id: btn.id,
-                  title: btn.title
-                }
-              }))
-            }
-          }
+                  title: btn.title,
+                },
+              })),
+            },
+          },
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        }
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
       );
 
       return response.data;
@@ -130,14 +138,14 @@ export class WhatsappApiService {
         {
           messaging_product: 'whatsapp',
           status: 'read',
-          message_id: messageId
+          message_id: messageId,
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        }
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
       );
 
       return response.data;

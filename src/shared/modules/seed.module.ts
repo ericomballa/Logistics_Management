@@ -4,10 +4,7 @@ import { UsersModule } from '../../users/users.module';
 import { WarehouseModule } from '../../warehouse/warehouse.module';
 
 @Module({
-  imports: [
-    UsersModule,
-    WarehouseModule,
-  ],
+  imports: [UsersModule, WarehouseModule],
   providers: [SeedService],
 })
 export class SeedModule implements OnApplicationBootstrap {

@@ -5,9 +5,14 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { PaymentStatus } from '../enums/payment-status.enum';
 import { Payment } from './payment.entity';
+// Avoid circular imports by using string names for relations or simple any for now if imports fail
+// import { Shipment } from '../../shipments/entities/shipment.entity';
+// import { User } from '../../users/entities/user.entity';
 
 @Entity('invoices')
 export class Invoice {
@@ -17,11 +22,19 @@ export class Invoice {
   @Column({ unique: true })
   invoiceNumber: string;
 
-  @Column()
+  @Column({ nullable: true })
   shipmentId: string;
 
-  @Column()
+  @ManyToOne('Shipment')
+  @JoinColumn({ name: 'shipmentId' })
+  shipment: any;
+
+  @Column({ nullable: true })
   clientId: string;
+
+  @ManyToOne('User')
+  @JoinColumn({ name: 'clientId' })
+  client: any;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   subtotal: number;

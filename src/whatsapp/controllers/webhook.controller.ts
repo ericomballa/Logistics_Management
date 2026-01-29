@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { WhatsappBotOrchestrator } from '../orchestrators/bot.orchestrator';
 import { WhatsAppWebhookDto } from '../dto/webhook.dto';
 
-@Controller('whatsapp-webhook')
+@Controller('webhook')
 export class WhatsappWebhookController {
   private readonly logger = new Logger(WhatsappWebhookController.name);
 
@@ -19,7 +19,12 @@ export class WhatsappWebhookController {
     @Query('hub.verify_token') token: string,
     @Query('hub.challenge') challenge: string,
   ) {
+    console.log('hello webhook =====>');
+
     const verifyToken = this.configService.get('WHATSAPP_VERIFY_TOKEN');
+    console.log('token meta ===>', token);
+    console.log('verifyToken ===>', verifyToken);
+    console.log('mode ===>', mode);
 
     if (mode === 'subscribe' && token === verifyToken) {
       this.logger.log('✅ Webhook vérifié avec succès');
@@ -35,6 +40,8 @@ export class WhatsappWebhookController {
   @HttpCode(200)
   async handleWebhook(@Body() body: WhatsAppWebhookDto) {
     try {
+      console.log('weebhook hello');
+
       this.logger.log('📨 Webhook reçu');
 
       if (body.object === 'whatsapp_business_account') {

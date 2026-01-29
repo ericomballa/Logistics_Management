@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Warehouse } from './warehouse.entity';
+import { Shipment } from '../../shipments/entities/shipment.entity';
 
 @Entity('warehouse_inventory')
 export class WarehouseInventory {
@@ -16,6 +17,10 @@ export class WarehouseInventory {
 
   @Column()
   shipmentId: string;
+
+  @ManyToOne(() => Shipment)
+  @JoinColumn({ name: 'shipmentId' })
+  shipment: Shipment;
 
   @Column()
   warehouseId: string;

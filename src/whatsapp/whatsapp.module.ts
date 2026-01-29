@@ -17,4 +17,8 @@ import { ShipmentsModule } from '../shipments/shipments.module';
   providers: [WhatsappApiService, AIService, ConversationService, WhatsappBotOrchestrator],
   exports: [WhatsappApiService, ConversationService, WhatsappBotOrchestrator],
 })
-export class WhatsappModule {}
+export class WhatsappModule {
+  constructor(private botOrchestrator: WhatsappBotOrchestrator) {
+    console.log('🤖 Whatsapp module initialized');
+  }
+}

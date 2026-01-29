@@ -19,12 +19,14 @@ export class WarehouseService {
     private warehouseRepository: Repository<Warehouse>,
     @InjectRepository(WarehouseInventory)
     private inventoryRepository: Repository<WarehouseInventory>,
-  ) {}
+  ) { }
 
   // ==================== WAREHOUSE METHODS ====================
 
   async createWarehouse(createWarehouseDto: CreateWarehouseDto): Promise<Warehouse> {
     // Check if code already exists
+    console.log(createWarehouseDto);
+
     const existingWarehouse = await this.warehouseRepository.findOne({
       where: { code: createWarehouseDto.code },
     });
@@ -274,6 +276,7 @@ export class WarehouseService {
   ): Promise<WarehouseInventory[]> {
     const query = this.inventoryRepository
       .createQueryBuilder('inventory')
+      .leftJoinAndSelect('inventory.shipment', 'shipment')
       .where('inventory.warehouseId = :warehouseId', { warehouseId });
 
     if (isInWarehouse !== undefined) {

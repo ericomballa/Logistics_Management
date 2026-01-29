@@ -26,7 +26,7 @@ export class BillingService {
     private paymentRepository: Repository<Payment>,
     @InjectRepository(TariffRule)
     private tariffRepository: Repository<TariffRule>,
-  ) {}
+  ) { }
 
   // ==================== COST CALCULATION ====================
 
@@ -143,7 +143,7 @@ export class BillingService {
   async findInvoice(id: string): Promise<Invoice> {
     const invoice = await this.invoiceRepository.findOne({
       where: { id },
-      relations: ['payments'],
+      relations: ['payments', 'shipment', 'client', 'shipment.createdBy'],
     });
 
     if (!invoice) {
