@@ -69,53 +69,75 @@ export class ShipmentsService {
     return savedShipment;
   }
 
-  async findAll(filters?: any): Promise<Shipment[]> {
-    const query = this.shipmentsRepository
+  async findAll(filters?: any): Promise<{ data: Shipment[]; total: number; page: number; limit: number }> {
+    const page = parseInt(filters.page) || 1;
+    const limit = parseInt(filters.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const queryBuilder = this.shipmentsRepository
       .createQueryBuilder('shipment')
       .leftJoinAndSelect('shipment.client', 'client')
       .leftJoinAndSelect('shipment.agent', 'agent')
       .leftJoinAndSelect('shipment.createdBy', 'createdBy');
 
     if (filters?.status) {
-      query.andWhere('shipment.status = :status', { status: filters.status });
+      queryBuilder.andWhere('shipment.status = :status', { status: filters.status });
     }
 
     if (filters?.origin) {
-      query.andWhere('shipment.origin = :origin', { origin: filters.origin });
+      queryBuilder.andWhere('shipment.origin = :origin', { origin: filters.origin });
     }
 
     if (filters?.destination) {
-      query.andWhere('shipment.destination = :destination', {
+      queryBuilder.andWhere('shipment.destination = :destination', {
         destination: filters.destination,
       });
     }
 
     if (filters?.clientId) {
-      query.andWhere('shipment.clientId = :clientId', {
+      queryBuilder.andWhere('shipment.clientId = :clientId', {
         clientId: filters.clientId,
       });
     }
 
     if (filters?.agentId) {
-      query.andWhere('shipment.agentId = :agentId', {
+      queryBuilder.andWhere('shipment.agentId = :agentId', {
         agentId: filters.agentId,
       });
     }
 
     if (filters?.createdById) {
-      query.andWhere('shipment.createdById = :createdById', {
+      queryBuilder.andWhere('shipment.createdById = :createdById', {
         createdById: filters.createdById,
       });
     }
 
     if (filters?.agentOrCreatorId) {
-      query.andWhere(
+      queryBuilder.andWhere(
         '(shipment.agentId = :id OR shipment.createdById = :id)',
         { id: filters.agentOrCreatorId },
       );
     }
 
-    return query.orderBy('shipment.createdAt', 'DESC').getMany();
+    if (filters?.search) {
+      queryBuilder.andWhere(
+        '(shipment.trackingNumber LIKE :search OR shipment.recipientName LIKE :search OR shipment.senderName LIKE :search)',
+        { search: `%${filters.search}%` }
+      );
+    }
+
+    const [data, total] = await queryBuilder
+      .orderBy('shipment.createdAt', 'DESC')
+      .skip(offset)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      total,
+      page,
+      limit
+    };
   }
 
   async findOne(id: string): Promise<Shipment> {

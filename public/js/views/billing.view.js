@@ -69,6 +69,22 @@ export class BillingView extends BaseView {
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Pagination Controls -->
+                    <div class="pagination-controls" style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem;">
+                        <div id="invoice-pagination-info" style="color:var(--text-light); font-size:0.9em;">
+                            Affichage de <span id="invoice-pagination-start">0</span> à <span id="invoice-pagination-end">0</span> sur <span id="invoice-pagination-total">0</span> factures
+                        </div>
+                        <div class="pagination-buttons">
+                            <button id="prev-invoice-page" class="btn btn-outline" disabled>
+                                <i class="fa-solid fa-chevron-left"></i> Précédent
+                            </button>
+                            <span id="current-invoice-page" style="margin:0 1rem; min-width:30px; display:inline-block; text-align:center;">1</span>
+                            <button id="next-invoice-page" class="btn btn-outline" disabled>
+                                Suivant <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Tariffs Preview -->
@@ -117,9 +133,14 @@ export class BillingView extends BaseView {
 
         this.root.innerHTML = layout;
         this.bindEvents();
-        this.loadInvoices();
+        this.loadInvoices('', 1);
         this.loadTariffs();
     }
+
+    currentPage = 1;
+    totalPages = 1;
+    itemsPerPage = 10;
+    currentInvoiceQuery = '';
 
     bindEvents() {
         const modal = document.getElementById('invoice-modal');
@@ -156,7 +177,7 @@ export class BillingView extends BaseView {
 
             try {
                 // Fetch shipments for this client
-                const res = await dataService.getShipments(`clientId=${clientId}`);
+                const res = await dataService.getShipments(`clientId=${clientId}`, 1, 100); // Use 100 as limit for dropdown
                 const shipments = res.data || res;
 
                 if (shipments.length === 0) {
@@ -169,6 +190,21 @@ export class BillingView extends BaseView {
             } catch (err) {
                 console.error(err);
                 shipmentSelect.innerHTML = '<option value="">Erreur chargement</option>';
+            }
+        });
+
+        // Invoice Pagination Events
+        document.getElementById('prev-invoice-page').addEventListener('click', () => {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.loadInvoices(this.currentInvoiceQuery, this.currentPage);
+            }
+        });
+
+        document.getElementById('next-invoice-page').addEventListener('click', () => {
+            if (this.currentPage < this.totalPages) {
+                this.currentPage++;
+                this.loadInvoices(this.currentInvoiceQuery, this.currentPage);
             }
         });
 
@@ -188,18 +224,24 @@ export class BillingView extends BaseView {
                 await dataService.createInvoice(data);
                 toast.success('Facture créée');
                 modal.style.display = 'none';
-                this.loadInvoices();
+                this.loadInvoices(this.currentInvoiceQuery, this.currentPage);
             } catch (err) {
                 toast.error('Erreur création facture');
             }
         });
     }
 
-    async loadInvoices() {
+    async loadInvoices(query = '', page = 1) {
         try {
-            const res = await dataService.getInvoices();
-            const list = res.data || res;
+            const res = await dataService.getInvoices(query, page, this.itemsPerPage);
+            const { data: list, total, page: currentPage, limit } = res;
+
+            this.totalPages = Math.ceil(total / this.itemsPerPage);
+            this.currentPage = currentPage;
+
             const tbody = document.getElementById('invoices-table');
+            const startIndex = (currentPage - 1) * this.itemsPerPage + 1;
+            const endIndex = Math.min(currentPage * this.itemsPerPage, total);
 
             if (list.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Aucune facture</td></tr>';
@@ -224,6 +266,16 @@ export class BillingView extends BaseView {
                     </td>
                 </tr>
             `).join('');
+
+            // Update pagination info
+            document.getElementById('invoice-pagination-start').textContent = startIndex;
+            document.getElementById('invoice-pagination-end').textContent = endIndex;
+            document.getElementById('invoice-pagination-total').textContent = total;
+            document.getElementById('current-invoice-page').textContent = currentPage;
+
+            // Update pagination buttons
+            document.getElementById('prev-invoice-page').disabled = currentPage <= 1;
+            document.getElementById('next-invoice-page').disabled = currentPage >= this.totalPages;
 
             // Status Update Modal Logic
             this.setupStatusModal();
@@ -449,7 +501,7 @@ export class BillingView extends BaseView {
                 await dataService.updateInvoice(id, { status });
                 toast.success('Statut mis à jour');
                 hide();
-                this.loadInvoices(); // Refresh list
+                this.loadInvoices(this.currentInvoiceQuery, this.currentPage); // Refresh list with current pagination
 
                 // Refresh stats too
                 const stats = await dataService.getInvoiceStats();

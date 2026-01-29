@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsEnum, IsDateString } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsDateString, IsNumberString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { PaymentStatus } from '../enums/payment-status.enum';
 
@@ -43,4 +43,30 @@ export class QueryInvoicesDto {
   @IsOptional()
   @IsDateString()
   dateTo?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Page number for pagination',
+    default: 1,
+  })
+  @IsOptional()
+  @IsNumberString()
+  page?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Number of items per page',
+    default: 10,
+  })
+  @IsOptional()
+  @IsNumberString()
+  limit?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Search term for invoice number or client name',
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
 }
