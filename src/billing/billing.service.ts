@@ -26,7 +26,7 @@ export class BillingService {
     private paymentRepository: Repository<Payment>,
     @InjectRepository(TariffRule)
     private tariffRepository: Repository<TariffRule>,
-  ) {}
+  ) { }
 
   // ==================== COST CALCULATION ====================
 
@@ -86,7 +86,7 @@ export class BillingService {
     };
   }
 
-  // ==================== INVOICE METHODS ====================
+  // ==================== INVOICE METHODS ==================
 
   async createInvoice(createInvoiceDto: CreateInvoiceDto): Promise<Invoice> {
     // Generate invoice number
@@ -103,47 +103,68 @@ export class BillingService {
     return this.invoiceRepository.save(invoice);
   }
 
-  async findAllInvoices(queryDto?: QueryInvoicesDto): Promise<Invoice[]> {
-    const query = this.invoiceRepository
+  async findAllInvoices(queryDto?: QueryInvoicesDto): Promise<{ data: Invoice[]; total: number; page: number; limit: number }> {
+    const page = parseInt(queryDto?.page) || 1;
+    const limit = parseInt(queryDto?.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const queryBuilder = this.invoiceRepository
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.payments', 'payments')
       .orderBy('invoice.createdAt', 'DESC');
 
     if (queryDto?.clientId) {
-      query.andWhere('invoice.clientId = :clientId', {
+      queryBuilder.andWhere('invoice.clientId = :clientId', {
         clientId: queryDto.clientId,
       });
     }
 
     if (queryDto?.shipmentId) {
-      query.andWhere('invoice.shipmentId = :shipmentId', {
+      queryBuilder.andWhere('invoice.shipmentId = :shipmentId', {
         shipmentId: queryDto.shipmentId,
       });
     }
 
     if (queryDto?.status) {
-      query.andWhere('invoice.status = :status', { status: queryDto.status });
+      queryBuilder.andWhere('invoice.status = :status', { status: queryDto.status });
     }
 
     if (queryDto?.dateFrom) {
-      query.andWhere('invoice.createdAt >= :dateFrom', {
+      queryBuilder.andWhere('invoice.createdAt >= :dateFrom', {
         dateFrom: new Date(queryDto.dateFrom),
       });
     }
 
     if (queryDto?.dateTo) {
-      query.andWhere('invoice.createdAt <= :dateTo', {
+      queryBuilder.andWhere('invoice.createdAt <= :dateTo', {
         dateTo: new Date(queryDto.dateTo),
       });
     }
 
-    return query.getMany();
+    if (queryDto?.search) {
+      queryBuilder.andWhere(
+        '(invoice.invoiceNumber LIKE :search OR invoice.clientName LIKE :search)',
+        { search: `%${queryDto.search}%` }
+      );
+    }
+
+    const [data, total] = await queryBuilder
+      .skip(offset)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      total,
+      page,
+      limit
+    };
   }
 
   async findInvoice(id: string): Promise<Invoice> {
     const invoice = await this.invoiceRepository.findOne({
       where: { id },
-      relations: ['payments'],
+      relations: ['payments', 'shipment', 'client', 'shipment.createdBy'],
     });
 
     if (!invoice) {

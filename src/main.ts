@@ -4,37 +4,62 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
+import { join } from 'path';
 // import * as compression from 'compression';
 
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { OriginCountry } from './shipments/enums/origin-country.enum';
+import { DestinationCountry } from './shipments/enums/destination-country.enum';
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  console.log('OriginCountry Enum:', OriginCountry);
+  console.log('DestinationCountry Enum:', DestinationCountry);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
   // Security
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net'],
+          styleSrc: ["'self'", "'unsafe-inline'", 'fonts.googleapis.com', 'cdnjs.cloudflare.com'],
+          fontSrc: ["'self'", 'fonts.gstatic.com', 'cdnjs.cloudflare.com'],
+          imgSrc: ["'self'", 'data:', 'blob:'],
+          connectSrc: ["'self'"],
+        },
+      },
+    }),
+  );
   // app.use(compression());
 
   // CORS
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    origin: true,
     credentials: true,
+  });
+
+  // Serve static files from the 'public' directory
+  app.useStaticAssets(join(__dirname, '..', 'public'), {
+    prefix: '',
   });
 
   // Global prefix
   app.setGlobalPrefix('api/v1');
 
   // Validation pipe
-  // app.useGlobalPipes(
-  //   new ValidationPipe({
-  //     whitelist: true,
-  //     forbidNonWhitelisted: true,
-  //     transform: true,
-  //     transformOptions: {
-  //       enableImplicitConversion: true,
-  //     },
-  //   }),
-  // );
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: false, // Don't crash on extra fields, just strip them
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
 
   // Swagger
   const config = new DocumentBuilder()
@@ -60,6 +85,7 @@ async function bootstrap() {
   console.log(`🚀 Application running on: http://localhost:${port}`);
   console.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
   console.log(`📋 API Base URL: http://localhost:${port}/api/v1`);
+  console.log(`🌐 Frontend: http://localhost:${port}`);
 }
 
 bootstrap();

@@ -9,6 +9,8 @@ import { Repository, Not } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { Agency } from './entities/agency.entity';
+import { Shipment } from '../shipments/entities/shipment.entity';
+import { ShipmentStatus } from '../shipments/enums/shipment-status.enum';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateAgencyDto } from './dto/create-agency.dto';
@@ -23,7 +25,9 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(Agency)
     private agenciesRepository: Repository<Agency>,
-  ) {}
+    @InjectRepository(Shipment)
+    private shipmentsRepository: Repository<Shipment>,
+  ) { }
 
   // ==================== USER METHODS ====================
 
@@ -203,16 +207,33 @@ export class UsersService {
   async getUserStats(id: string) {
     const user = await this.findOne(id);
 
-    // In a real app, you'd join with shipments table
-    // This is a placeholder
+    // Count shipments where the user is either the creator or the assigned agent
+    const shipmentCount = await this.shipmentsRepository.count({
+      where: [{ createdById: id }, { agentId: id }],
+    });
+
+    const activeShipments = await this.shipmentsRepository.count({
+      where: [
+        { createdById: id, status: Not(ShipmentStatus.DELIVERED) },
+        { agentId: id, status: Not(ShipmentStatus.DELIVERED) },
+      ],
+    });
+
+    const deliveredShipments = await this.shipmentsRepository.count({
+      where: [
+        { createdById: id, status: ShipmentStatus.DELIVERED },
+        { agentId: id, status: ShipmentStatus.DELIVERED },
+      ],
+    });
+
     return {
       userId: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
-      shipmentCount: 0,
-      activeShipments: 0,
-      deliveredShipments: 0,
+      shipmentCount,
+      activeShipments,
+      deliveredShipments,
       memberSince: user.createdAt,
     };
   }

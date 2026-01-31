@@ -7,10 +7,13 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { UserRole } from '../enums/user-role.enum';
 import { Agency } from './agency.entity';
 import { Exclude } from 'class-transformer';
+import { Role } from './role.entity';
 
 @Entity('users')
 @Index(['email'])
@@ -51,6 +54,20 @@ export class User {
   })
   @JoinColumn({ name: 'agencyId' })
   agency: Agency;
+
+  @ManyToMany(() => Role, role => role.users)
+  @JoinTable({
+    name: 'user_roles',
+    joinColumn: {
+      name: 'user_id',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'role_id',
+      referencedColumnName: 'id',
+    },
+  })
+  roles: Role[];
 
   @Column({ nullable: true })
   lastLoginAt: Date;

@@ -22,9 +22,10 @@ export class CreateWarehouseDto {
     example: 'CN-SHA',
     description: 'Unique warehouse code',
   })
+  @IsOptional()
   @IsString()
   @MinLength(2, { message: 'Code must be at least 2 characters' })
-  code: string;
+  code?: string;
 
   @ApiProperty({
     example: 'China',

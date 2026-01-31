@@ -8,7 +8,9 @@ import {
   Delete,
   UseGuards,
   Query,
+  ForbiddenException,
 } from '@nestjs/common';
+import { UserRole } from '../users/enums/user-role.enum';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ShipmentsService } from './shipments.service';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
@@ -21,21 +23,32 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ShipmentsController {
-  constructor(private readonly shipmentsService: ShipmentsService) {}
+  constructor(private readonly shipmentsService: ShipmentsService) {
+    console.log('ShipmentsController initialized');
+    console.log('CreateShipmentDto:', CreateShipmentDto);
+    console.log('JwtAuthGuard:', JwtAuthGuard);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create shipment' })
-  create(
-    @Body() createShipmentDto: CreateShipmentDto,
-    @CurrentUser() user: any,
-  ) {
+  create(@Body() createShipmentDto: CreateShipmentDto, @CurrentUser() user: any) {
     return this.shipmentsService.create(createShipmentDto, user.userId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all shipments' })
-  findAll(@Query() filters: any) {
+  findAll(@Query() filters: any, @CurrentUser() user: any) {
+    // If user is an AGENT, they only see shipments they created or that are assigned to them
+    if (user.role === UserRole.AGENT) {
+      filters.agentOrCreatorId = user.userId;
+    }
     return this.shipmentsService.findAll(filters);
+  }
+
+  @Post(':id/assign')
+  @ApiOperation({ summary: 'Assign shipment to agent' })
+  assign(@Param('id') id: string, @Body('agentId') agentId: string) {
+    return this.shipmentsService.assignAgent(id, agentId);
   }
 
   @Get('stats')
@@ -68,7 +81,10 @@ export class ShipmentsController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete shipment' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    if (user.role === UserRole.SECRETARY) {
+      throw new ForbiddenException('Secretaries cannot delete shipments');
+    }
     return this.shipmentsService.remove(id);
   }
 }

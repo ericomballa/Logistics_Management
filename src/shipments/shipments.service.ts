@@ -14,21 +14,44 @@ export class ShipmentsService {
     @InjectRepository(Shipment)
     private shipmentsRepository: Repository<Shipment>,
     private trackingService: TrackingService,
-  ) {}
+  ) { }
 
-  async create(
-    createShipmentDto: CreateShipmentDto,
-    userId: string,
-  ): Promise<Shipment> {
-    const trackingNumber = this.generateTrackingNumber(
-      createShipmentDto.origin,
-    );
+  async create(createShipmentDto: CreateShipmentDto, userId: string): Promise<Shipment> {
+    // Default Origin/Destination if missing
+    console.log(createShipmentDto);
+
+    const origin = createShipmentDto.origin || 'DUBAI'; // Default to China or configure default
+    const destination = createShipmentDto.destination || 'CAMEROON'; // Default to Cameroon
+
+    const trackingNumber = this.generateTrackingNumber(origin);
+
+    // Map payload fields to entity fields
+    const receiverName = createShipmentDto.receiverName || createShipmentDto.recipientName;
+    const receiverAddress = createShipmentDto.receiverAddress || createShipmentDto.recipientAddress;
+    const receiverPhone = createShipmentDto.receiverPhone || '000000000'; // Default placeholder
+
+    // Handle date
+    let estimatedDate = createShipmentDto.estimatedDeliveryDate;
+    if (typeof estimatedDate === 'string') {
+      estimatedDate = new Date(estimatedDate);
+    }
 
     const shipment = this.shipmentsRepository.create({
       ...createShipmentDto,
+      origin: origin as any,
+      destination: destination as any,
+      receiverName,
+      receiverAddress,
+      receiverPhone,
+      receiverCity: createShipmentDto.destinationCity || createShipmentDto.receiverCity,
+      originCity: createShipmentDto.originCity,
+      destinationCity: createShipmentDto.destinationCity || createShipmentDto.receiverCity,
+      estimatedDeliveryDate: estimatedDate as Date,
       trackingNumber,
-      clientId: userId,
+      clientId: createShipmentDto.clientId || userId,
+      createdById: userId,
       status: ShipmentStatus.PENDING,
+      description: createShipmentDto.description || `${createShipmentDto.serviceType || 'Standard'} Shipment (${createShipmentDto.dimensions || 'N/A'})`
     });
 
     const savedShipment = await this.shipmentsRepository.save(shipment);
@@ -37,8 +60,8 @@ export class ShipmentsService {
     await this.trackingService.createEvent({
       shipmentId: savedShipment.id,
       status: ShipmentStatus.PENDING,
-      location: createShipmentDto.origin,
-      country: createShipmentDto.origin,
+      location: origin as string,
+      country: origin as string,
       description: 'Shipment created',
       actor: 'SYSTEM',
     });
@@ -46,39 +69,81 @@ export class ShipmentsService {
     return savedShipment;
   }
 
-  async findAll(filters?: any): Promise<Shipment[]> {
-    const query = this.shipmentsRepository
+  async findAll(filters?: any): Promise<{ data: Shipment[]; total: number; page: number; limit: number }> {
+    const page = parseInt(filters.page) || 1;
+    const limit = parseInt(filters.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const queryBuilder = this.shipmentsRepository
       .createQueryBuilder('shipment')
       .leftJoinAndSelect('shipment.client', 'client')
-      .leftJoinAndSelect('shipment.agent', 'agent');
+      .leftJoinAndSelect('shipment.agent', 'agent')
+      .leftJoinAndSelect('shipment.createdBy', 'createdBy');
 
     if (filters?.status) {
-      query.andWhere('shipment.status = :status', { status: filters.status });
+      queryBuilder.andWhere('shipment.status = :status', { status: filters.status });
     }
 
     if (filters?.origin) {
-      query.andWhere('shipment.origin = :origin', { origin: filters.origin });
+      queryBuilder.andWhere('shipment.origin = :origin', { origin: filters.origin });
     }
 
     if (filters?.destination) {
-      query.andWhere('shipment.destination = :destination', {
+      queryBuilder.andWhere('shipment.destination = :destination', {
         destination: filters.destination,
       });
     }
 
     if (filters?.clientId) {
-      query.andWhere('shipment.clientId = :clientId', {
+      queryBuilder.andWhere('shipment.clientId = :clientId', {
         clientId: filters.clientId,
       });
     }
 
-    return query.orderBy('shipment.createdAt', 'DESC').getMany();
+    if (filters?.agentId) {
+      queryBuilder.andWhere('shipment.agentId = :agentId', {
+        agentId: filters.agentId,
+      });
+    }
+
+    if (filters?.createdById) {
+      queryBuilder.andWhere('shipment.createdById = :createdById', {
+        createdById: filters.createdById,
+      });
+    }
+
+    if (filters?.agentOrCreatorId) {
+      queryBuilder.andWhere(
+        '(shipment.agentId = :id OR shipment.createdById = :id)',
+        { id: filters.agentOrCreatorId },
+      );
+    }
+
+    if (filters?.search) {
+      queryBuilder.andWhere(
+        '(shipment.trackingNumber LIKE :search OR shipment.receiverName LIKE :search OR shipment.senderName LIKE :search OR client.name LIKE :search)',
+        { search: `%${filters.search}%` }
+      );
+    }
+
+    const [data, total] = await queryBuilder
+      .orderBy('shipment.createdAt', 'DESC')
+      .skip(offset)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      total,
+      page,
+      limit
+    };
   }
 
   async findOne(id: string): Promise<Shipment> {
     const shipment = await this.shipmentsRepository.findOne({
       where: { id },
-      relations: ['client', 'agent'],
+      relations: ['client', 'agent', 'createdBy'],
     });
 
     if (!shipment) {
@@ -91,7 +156,7 @@ export class ShipmentsService {
   async findByTrackingNumber(trackingNumber: string): Promise<Shipment> {
     const shipment = await this.shipmentsRepository.findOne({
       where: { trackingNumber },
-      relations: ['client', 'agent'],
+      relations: ['client', 'agent', 'createdBy'],
     });
 
     if (!shipment) {
@@ -106,17 +171,22 @@ export class ShipmentsService {
     updateShipmentDto: UpdateShipmentDto,
     userId?: string,
   ): Promise<Shipment> {
+    console.log(updateShipmentDto);
+
     const shipment = await this.findOne(id);
 
+    console.log(shipment);
+
     // Track status changes
-    if (
-      updateShipmentDto.status &&
-      updateShipmentDto.status !== shipment.status
-    ) {
+    if (updateShipmentDto.status && updateShipmentDto.status !== shipment.status) {
       await this.trackingService.createEvent({
         shipmentId: id,
         status: updateShipmentDto.status,
-        location: updateShipmentDto.currentLocation || shipment.currentLocation,
+        location:
+          updateShipmentDto.currentLocationCountry ||
+          updateShipmentDto.currentLocation ||
+          shipment.currentLocation ||
+          shipment.origin,
         country: shipment.destination,
         description: `Status updated to ${updateShipmentDto.status}`,
         actor: userId ? 'AGENT' : 'SYSTEM',
@@ -131,6 +201,12 @@ export class ShipmentsService {
   async remove(id: string): Promise<void> {
     const shipment = await this.findOne(id);
     await this.shipmentsRepository.remove(shipment);
+  }
+
+  async assignAgent(id: string, agentId: string): Promise<Shipment> {
+    const shipment = await this.findOne(id);
+    shipment.agentId = agentId;
+    return this.shipmentsRepository.save(shipment);
   }
 
   async getStats() {

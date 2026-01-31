@@ -63,7 +63,7 @@ export class BillingController {
   // ==================== INVOICE ENDPOINTS ====================
 
   @Post('invoices')
-  @Roles(UserRole.AGENT, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.AGENT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SECRETARY)
   @ApiOperation({ summary: 'Create new invoice' })
   @ApiResponse({ status: 201, description: 'Invoice created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input' })
@@ -72,6 +72,8 @@ export class BillingController {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     @CurrentUser() user: any,
   ) {
+    console.log(createInvoiceDto);
+
     return this.billingService.createInvoice(createInvoiceDto);
   }
 
@@ -114,15 +116,12 @@ export class BillingController {
   }
 
   @Patch('invoices/:id')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SECRETARY)
   @ApiOperation({ summary: 'Update invoice' })
   @ApiParam({ name: 'id', description: 'Invoice ID' })
   @ApiResponse({ status: 200, description: 'Invoice updated successfully' })
   @ApiResponse({ status: 404, description: 'Invoice not found' })
-  updateInvoice(
-    @Param('id') id: string,
-    @Body() updateInvoiceDto: UpdateInvoiceDto,
-  ) {
+  updateInvoice(@Param('id') id: string, @Body() updateInvoiceDto: UpdateInvoiceDto) {
     return this.billingService.updateInvoice(id, updateInvoiceDto);
   }
 
@@ -138,7 +137,7 @@ export class BillingController {
   }
 
   @Post('invoices/:id/cancel')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SECRETARY)
   @ApiOperation({ summary: 'Cancel invoice' })
   @ApiParam({ name: 'id', description: 'Invoice ID' })
   @ApiResponse({ status: 200, description: 'Invoice cancelled' })
@@ -157,10 +156,7 @@ export class BillingController {
     description: 'Invalid input or payment exceeds balance',
   })
   @ApiResponse({ status: 404, description: 'Invoice not found' })
-  addPayment(
-    @Body() createPaymentDto: CreatePaymentDto,
-    @CurrentUser() user: any,
-  ) {
+  addPayment(@Body() createPaymentDto: CreatePaymentDto, @CurrentUser() user: any) {
     // Auto-set processedBy if not provided
     if (!createPaymentDto.processedBy) {
       createPaymentDto.processedBy = user.userId;
@@ -173,10 +169,7 @@ export class BillingController {
   @ApiQuery({ name: 'invoiceId', required: false })
   @ApiQuery({ name: 'method', required: false })
   @ApiResponse({ status: 200, description: 'List of payments' })
-  findAllPayments(
-    @Query('invoiceId') invoiceId?: string,
-    @Query('method') method?: string,
-  ) {
+  findAllPayments(@Query('invoiceId') invoiceId?: string, @Query('method') method?: string) {
     return this.billingService.findAllPayments({ invoiceId, method });
   }
 
@@ -249,10 +242,7 @@ export class BillingController {
   @ApiOperation({ summary: 'Update tariff rule' })
   @ApiParam({ name: 'id', description: 'Tariff rule ID' })
   @ApiResponse({ status: 200, description: 'Tariff rule updated' })
-  updateTariffRule(
-    @Param('id') id: string,
-    @Body() updateTariffRuleDto: UpdateTariffRuleDto,
-  ) {
+  updateTariffRule(@Param('id') id: string, @Body() updateTariffRuleDto: UpdateTariffRuleDto) {
     return this.billingService.updateTariffRule(id, updateTariffRuleDto);
   }
 
@@ -274,10 +264,7 @@ export class BillingController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   @ApiResponse({ status: 200, description: 'Revenue report' })
-  getRevenueReport(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
+  getRevenueReport(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
     return this.billingService.getRevenueReport(
       startDate ? new Date(startDate) : undefined,
       endDate ? new Date(endDate) : undefined,
