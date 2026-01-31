@@ -63,7 +63,7 @@ export class BillingController {
   // ==================== INVOICE ENDPOINTS ====================
 
   @Post('invoices')
-  @Roles(UserRole.AGENT, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.AGENT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SECRETARY)
   @ApiOperation({ summary: 'Create new invoice' })
   @ApiResponse({ status: 201, description: 'Invoice created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input' })
@@ -116,7 +116,7 @@ export class BillingController {
   }
 
   @Patch('invoices/:id')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SECRETARY)
   @ApiOperation({ summary: 'Update invoice' })
   @ApiParam({ name: 'id', description: 'Invoice ID' })
   @ApiResponse({ status: 200, description: 'Invoice updated successfully' })
@@ -137,7 +137,7 @@ export class BillingController {
   }
 
   @Post('invoices/:id/cancel')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SECRETARY)
   @ApiOperation({ summary: 'Cancel invoice' })
   @ApiParam({ name: 'id', description: 'Invoice ID' })
   @ApiResponse({ status: 200, description: 'Invoice cancelled' })

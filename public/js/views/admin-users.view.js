@@ -45,8 +45,11 @@ export class AdminUsersView extends BaseView {
                             <select id="role" required>
                                 <option value="CLIENT">Client</option>
                                 <option value="AGENT">Agent</option>
+                                ${window.state && (window.state.isAdmin || window.state.get('user')?.role === 'ADMIN') ? `
+                                <option value="SECRETARY">Secrétaire</option>
                                 <option value="ADMIN">Admin</option>
                                 <option value="SUPER_ADMIN">Super Admin</option>
+                                ` : ''}
                             </select>
                         </div>
                         <div class="form-group">
@@ -87,6 +90,16 @@ export class AdminUsersView extends BaseView {
 
         document.getElementById('user-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            // Check if user is secretary and trying to create admin/secretary
+            const currentUser = window.state?.get('user') || { role: null };
+            const selectedRole = document.getElementById('role').value;
+
+            if (currentUser.role === 'SECRETARY' && ['ADMIN', 'SECRETARY', 'SUPER_ADMIN'].includes(selectedRole)) {
+                toast.error('Accès refusé. Les secrétaires ne peuvent pas créer des utilisateurs avec ces rôles.');
+                return;
+            }
+
             const id = document.getElementById('user-id').value;
             const data = {
                 name: document.getElementById('name').value,
