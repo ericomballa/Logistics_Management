@@ -18,7 +18,7 @@ export class DashboardView extends BaseView {
 
             <div class="glass-panel">
                 <h3 style="margin-bottom:1rem;"><i class="fa-solid fa-bolt"></i> Actions rapides</h3>
-                <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                <div class="flex-wrap gap-1" style="display:flex;">
                     <a href="#shipments" class="btn btn-secondary">
                         <i class="fa-solid fa-plus"></i> Nouvelle Expédition
                     </a>
@@ -45,7 +45,7 @@ export class DashboardView extends BaseView {
 
             container.innerHTML = `
                 <div class="glass-panel" style="display:flex; align-items:center; gap:1rem;">
-                    <div style="background:rgba(99,102,241,0.2); width:50px; height:50px; display:flex; align-items:center; justify-content:center; border-radius:12px; color:var(--primary); font-size:1.5rem;">
+                    <div class="stats-icon" style="background:rgba(99,102,241,0.2); color:var(--primary);">
                         <i class="fa-solid fa-box"></i>
                     </div>
                     <div>
@@ -55,7 +55,7 @@ export class DashboardView extends BaseView {
                 </div>
                 
                 <div class="glass-panel" style="display:flex; align-items:center; gap:1rem;">
-                    <div style="background:rgba(236,72,153,0.2); width:50px; height:50px; display:flex; align-items:center; justify-content:center; border-radius:12px; color:var(--secondary); font-size:1.5rem;">
+                    <div class="stats-icon" style="background:rgba(236,72,153,0.2); color:var(--secondary);">
                         <i class="fa-solid fa-truck-fast"></i>
                     </div>
                     <div>
@@ -65,7 +65,7 @@ export class DashboardView extends BaseView {
                 </div>
 
                 <div class="glass-panel" style="display:flex; align-items:center; gap:1rem;">
-                    <div style="background:rgba(16,185,129,0.2); width:50px; height:50px; display:flex; align-items:center; justify-content:center; border-radius:12px; color:var(--success); font-size:1.5rem;">
+                    <div class="stats-icon" style="background:rgba(16,185,129,0.2); color:var(--success);">
                         <i class="fa-solid fa-check-circle"></i>
                     </div>
                     <div>

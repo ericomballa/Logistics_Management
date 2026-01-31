@@ -88,7 +88,7 @@ export class ReportsView extends BaseView {
                 <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items: flex-end;">
                     <div style="flex:1; min-width:200px;">
                         <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Sélectionner une date</label>
-                        <input type="date" id="daily-revenue-date" class="input no-icon" style="width:100%;">
+                        <input type="date" id="daily-revenue-date" class="input no-icon w-full">
                     </div>
                     <button id="load-daily-revenue-btn" class="btn btn-primary" style="height: 48px;">
                         <i class="fa-solid fa-search"></i> Charger

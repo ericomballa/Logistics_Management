@@ -6,109 +6,130 @@ import { toast, formatters } from '../utils/ui.js';
 export class ShipmentsView extends BaseView {
     async render() {
         const layout = this.renderLayout(`
-            <div class="page-header">
-                <h2>Expéditions</h2>
-            </div>
-            
-            <div class="shipments-layout">
-                    <div class="glass-panel">
-                    <h3 style="margin-bottom:1rem;">Nouvelle Expédition</h3>
+
+
+<div class="page-header responsive-header">
+    <h2>Expéditions</h2>
+    <button id="new-shipment-btn" class="btn btn-primary btn-block-mobile">
+        <i class="fa-solid fa-plus"></i> Nouvelle Expédition
+    </button>
+</div>
+
+<div class="glass-panel">
+    <div class="list-header">
+        <h3>Liste des colis</h3>
+        <div class="form-group search-container">
+            <input type="text" id="search-input" placeholder="Rechercher..." class="no-icon">
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-as-card">
+            <thead>
+                <tr>
+                    <th>Suivi</th>
+                    <th>Destinataire</th>
+                    <th>Date</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="shipments-table-body">
+                <tr>
+                    <td colspan="5" class="table-empty-state">
+                        Chargement...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination-controls responsive-pagination">
+        <div id="pagination-info" class="pagination-info">
+            Affichage de <span id="pagination-start">0</span>
+            à <span id="pagination-end">0</span>
+            sur <span id="pagination-total">0</span> colis
+        </div>
+
+        <div class="pagination-buttons">
+            <button id="prev-page" class="btn btn-outline" disabled>
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+
+            <span id="current-page" class="pagination-current">
+                1
+            </span>
+
+            <button id="next-page" class="btn btn-outline" disabled>
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+            <!-- Create Shipment Modal -->
+            <div id="create-modal" class="modal-overlay hidden" style="display:none;">
+                <div class="modal-container glass-panel">
+                    <div class="modal-header">
+                        <h3>Nouvelle Expédition</h3>
+                        <button class="modal-close">&times;</button>
+                    </div>
                     <form id="shipment-form">
                         <div class="form-group">
-                            <select id="shipment-client-id" style="margin-bottom:1rem;">
+                            <select id="shipment-client-id" class="w-full" style="margin-bottom:1rem;">
                                 <option value="">Sélectionner un client...</option>
                             </select>
                         </div>
                         <div class="form-group">
                              <label>Expéditeur (Staff)</label>
-                            <select id="senderName" required>
+                            <select id="senderName" class="w-full" required>
                                 <option value="">Chargement...</option>
                             </select>
                         </div>
-                        <div class="form-group"><input type="text" id="senderAddress" placeholder="Adresse Exp." required></div>
-                        <div class="form-group"><input type="text" id="senderPhone" placeholder="Téléphone Exp."></div>
-                        
+                        <div class="form-group"><input type="text" id="senderAddress" class="w-full" placeholder="Adresse Exp." required></div>
+                        <div class="form-group"><input type="text" id="senderPhone" class="w-full" placeholder="Téléphone Exp."></div>
+
                         <div class="grid grid-2" style="margin-bottom: 1rem;">
                             <div>
                                  <label>Pays de Départ</label>
-                                 <select id="origin" required>
+                                 <select id="origin" class="w-full" required>
                                      <option value="CHINA" selected>CHINA</option>
                                      <option value="DUBAI">DUBAI</option>
                                      <option value="USA">USA</option>
                                      <option value="TURKEY">TURKEY</option>
                                  </select>
-                                 <input type="text" id="originCity" placeholder="Ville de départ" style="margin-top:0.5rem;" class="no-icon">
+                                 <input type="text" id="originCity" class="w-full no-icon" placeholder="Ville de départ" style="margin-top:0.5rem;">
                             </div>
-                            <div style="flex:1;">
+                            <div>
                                  <label>Pays de Destination</label>
-                                 <select id="destination" required>
+                                 <select id="destination" class="w-full" required>
                                      <option value="CAMEROON">CAMEROON</option>
                                      <option value="GABON">GABON</option>
                                      <option value="CONGO">CONGO</option>
                                      <option value="CHAD">CHAD</option>
                                  </select>
-                                 <input type="text" id="destinationCity" placeholder="Ville de destination" style="margin-top:0.5rem;" class="no-icon">
+                                 <input type="text" id="destinationCity" class="w-full no-icon" placeholder="Ville de destination" style="margin-top:0.5rem;">
                             </div>
                         </div>
-                        <div class="form-group"><input type="text" id="recipientName" placeholder="Destinataire (Nom)" required></div>
-                        <div class="form-group"><input type="text" id="recipientAddress" placeholder="Adresse Dest." required></div>
+                        <div class="form-group"><input type="text" id="recipientName" class="w-full" placeholder="Destinataire (Nom)" required></div>
+                        <div class="form-group"><input type="text" id="recipientPhone" class="w-full" placeholder="Téléphone Dest." required></div>
+                        <div class="form-group"><input type="text" id="recipientAddress" class="w-full" placeholder="Adresse Dest." required></div>
                         <div class="grid grid-2" style="margin-bottom: 1rem;">
-                             <input type="number" step="0.1" id="weight" placeholder="Poids (kg)" required>
-                             <input type="text" id="dimensions" placeholder="Dim (LxWxH)">
+                             <input type="number" step="0.1" id="weight" class="w-full" placeholder="Poids (kg)" required>
+                             <input type="text" id="dimensions" class="w-full" placeholder="Dim (LxWxH)">
                         </div>
                         <div class="form-group">
                             <label>Date estimée</label>
-                            <input type="date" id="estimatedDeliveryDate" required>
+                            <input type="date" id="estimatedDeliveryDate" class="w-full" required>
                         </div>
                         <div class="form-group">
-                            <select id="serviceType">
+                            <select id="serviceType" class="w-full">
                                 <option value="standard">Standard</option>
                                 <option value="express">Express</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width:100%">Créer</button>
+                        <button type="submit" class="btn btn-primary w-full">Créer</button>
                     </form>
-                </div>
-
-                <div class="glass-panel">
-                     <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
-                        <h3>Liste des colis</h3>
-                        <div class="form-group" style="width:200px; margin:0;">
-                            <input type="text" id="search-input" placeholder="Rechercher..." class="no-icon">
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Suivi</th>
-                                    <th>Destinataire</th>
-                                    <th>Date</th>
-                                    <th>Statut</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="shipments-table-body">
-                                <tr><td colspan="5" style="text-align:center">Chargement...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Pagination Controls -->
-                    <div class="pagination-controls" style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem;">
-                        <div id="pagination-info" style="color:var(--text-light); font-size:0.9em;">
-                            Affichage de <span id="pagination-start">0</span> à <span id="pagination-end">0</span> sur <span id="pagination-total">0</span> colis
-                        </div>
-                        <div class="pagination-buttons">
-                            <button id="prev-page" class="btn btn-outline" disabled>
-                                <i class="fa-solid fa-chevron-left"></i> Précédent
-                            </button>
-                            <span id="current-page" style="margin:0 1rem; min-width:30px; display:inline-block; text-align:center;">1</span>
-                            <button id="next-page" class="btn btn-outline" disabled>
-                                Suivant <i class="fa-solid fa-chevron-right"></i>
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -123,7 +144,7 @@ export class ShipmentsView extends BaseView {
                         <input type="hidden" id="status-shipment-id">
                         <div class="form-group">
                             <label>Nouveau Statut</label>
-                            <select id="new-status" required>
+                            <select id="new-status" class="w-full" required>
                                 <option value="PENDING">En attente</option>
                                 <option value="IN_TRANSIT">En transit</option>
                                 <option value="OUT_FOR_DELIVERY">En cours de livraison</option>
@@ -133,13 +154,13 @@ export class ShipmentsView extends BaseView {
                         </div>
                         <div class="form-group">
                             <label>Emplacement actuel</label>
-                            <input type="text" id="current-location" placeholder="Ville, Pays">
+                            <input type="text" id="current-location" class="w-full" placeholder="Ville, Pays">
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width:100%">Mettre à jour</button>
+                        <button type="submit" class="btn btn-primary w-full">Mettre à jour</button>
                     </form>
                 </div>
             </div>
-        `, 'shipments');
+`, 'shipments');
 
         this.root.innerHTML = layout;
         this.bindLogout();
@@ -148,6 +169,12 @@ export class ShipmentsView extends BaseView {
         this.loadStaff(); // Load staff for sender
         this.setupDetailsModal();
         this.loadShipments('', 1);
+
+        // Add resize event listener to handle layout changes
+        window.addEventListener('resize', () => {
+            // Reload the current shipment list to adjust for new screen size
+            this.loadShipments(this.currentQuery, this.currentPage);
+        });
     }
 
     async loadStaff() {
@@ -175,10 +202,25 @@ export class ShipmentsView extends BaseView {
             if (!select) return;
 
             const res = await dataService.getClients();
-            const clients = res.data || res;
+            this.clients = res.data || res; // Store clients for auto-fill
 
             select.innerHTML = '<option value="">Sélectionner un client (Moi-même par défaut)</option>' +
-                clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                this.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+            // Auto-fill listener
+            select.addEventListener('change', (e) => {
+                const clientId = e.target.value;
+                if (clientId && this.clients) {
+                    const client = this.clients.find(c => c.id === clientId);
+                    if (client) {
+                        document.getElementById('recipientName').value = client.name || '';
+                        document.getElementById('recipientPhone').value = client.phone || '';
+                        // Also fill address if available and empty
+                        const addressInput = document.getElementById('recipientAddress');
+                        if (client.address) addressInput.value = client.address;
+                    }
+                }
+            });
         } catch (e) { console.error('Clients load error', e); }
     }
 
@@ -188,6 +230,13 @@ export class ShipmentsView extends BaseView {
     currentQuery = '';
 
     bindEvents() {
+        const createModal = document.getElementById('create-modal');
+        const openCreateBtn = document.getElementById('new-shipment-btn');
+        const closeCreateBtn = createModal.querySelector('.modal-close');
+
+        if (openCreateBtn) openCreateBtn.addEventListener('click', () => createModal.style.display = 'flex');
+        if (closeCreateBtn) closeCreateBtn.addEventListener('click', () => createModal.style.display = 'none');
+
         document.getElementById('shipment-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const data = {
@@ -196,6 +245,7 @@ export class ShipmentsView extends BaseView {
                 senderAddress: document.getElementById('senderAddress').value,
                 senderPhone: document.getElementById('senderPhone').value,
                 recipientName: document.getElementById('recipientName').value,
+                receiverPhone: document.getElementById('recipientPhone').value, // Add receiver phone
                 recipientAddress: document.getElementById('recipientAddress').value,
                 origin: document.getElementById('origin').value,
                 originCity: document.getElementById('originCity').value,
@@ -211,6 +261,7 @@ export class ShipmentsView extends BaseView {
                 await dataService.createShipment(data);
                 toast.success('Expédition créée');
                 e.target.reset();
+                createModal.style.display = 'none';
                 this.loadShipments(this.currentQuery, this.currentPage);
             } catch (err) {
                 toast.error(err.message || 'Erreur création');
@@ -315,20 +366,7 @@ export class ShipmentsView extends BaseView {
             if (list.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Aucune expédition</td></tr>';
             } else {
-                tbody.innerHTML = list.map(item => `
-                    <tr>
-                        <td style="font-weight:600; font-family:monospace;">${item.trackingNumber}</td>
-                        <td>${item.recipientName || item.receiverName}</td>
-                        <td>${formatters.date(item.createdAt)}</td>
-                        <td><span class="badge badge-info">${item.status}</span></td>
-                        <td>
-                            <button class="btn-icon view-btn" data-id="${item.id}" title="Voir détails"><i class="fa-solid fa-eye"></i></button>
-                            <button class="btn-icon edit-status-btn" data-id="${item.id}" title="Changer statut"><i class="fa-solid fa-rotate"></i></button>
-                            <button class="btn-icon copy-btn" data-text="${item.trackingNumber}"><i class="fa-regular fa-copy"></i></button>
-                            ${!state.isSecretary ? `<button class="btn-icon delete-btn" data-id="${item.id}" style="color:var(--danger)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>` : ''}
-                        </td>
-                    </tr>
-                `).join('');
+                this.renderShipmentsList(list, tbody);
             }
 
             // Update pagination info
@@ -342,6 +380,70 @@ export class ShipmentsView extends BaseView {
             document.getElementById('next-page').disabled = currentPage >= this.totalPages;
         } catch (err) {
             console.error(err);
+        }
+    }
+
+    renderShipmentsList(list, tbody) {
+        // Check if we're on mobile and switch to card view
+        const isMobile = window.innerWidth <= 768;
+        const tableElement = tbody.closest('table');
+
+        if (isMobile) {
+            // Add class to table to indicate mobile view
+            if (tableElement) {
+                tableElement.classList.add('mobile-view');
+                tableElement.classList.remove('desktop-view');
+            }
+
+            tbody.innerHTML = list.map(item => `
+                <tr class="shipment-card">
+                    <td colspan="5">
+                        <div class="shipment-card-content">
+                            <div class="shipment-card-header">
+                                <div class="shipment-tracking" style="font-weight:600; font-family:monospace; color:var(--primary);">${item.trackingNumber}</div>
+                                <div class="shipment-status"><span class="badge badge-info">${item.status}</span></div>
+                            </div>
+                            <div class="shipment-details">
+                                <div class="detail-row">
+                                    <span class="detail-label">Destinataire:</span>
+                                    <span class="detail-value">${item.recipientName || item.receiverName}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Date:</span>
+                                    <span class="detail-value">${formatters.date(item.createdAt)}</span>
+                                </div>
+                                <div class="detail-actions">
+                                    <button class="btn-icon view-btn" data-id="${item.id}" title="Voir détails"><i class="fa-solid fa-eye"></i></button>
+                                    <button class="btn-icon edit-status-btn" data-id="${item.id}" title="Changer statut"><i class="fa-solid fa-rotate"></i></button>
+                                    <button class="btn-icon copy-btn" data-text="${item.trackingNumber}"><i class="fa-regular fa-copy"></i></button>
+                                    ${!state.isSecretary ? `<button class="btn-icon delete-btn" data-id="${item.id}" style="color:var(--danger)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            // Add class to table to indicate desktop view
+            if (tableElement) {
+                tableElement.classList.add('desktop-view');
+                tableElement.classList.remove('mobile-view');
+            }
+
+            tbody.innerHTML = list.map(item => `
+                <tr>
+                    <td data-label="Suivi" style="font-weight:600; font-family:monospace;">${item.trackingNumber}</td>
+                    <td data-label="Destinataire">${item.recipientName || item.receiverName}</td>
+                    <td data-label="Date">${formatters.date(item.createdAt)}</td>
+                    <td data-label="Statut"><span class="badge badge-info">${item.status}</span></td>
+                    <td data-label="Actions">
+                        <button class="btn-icon view-btn" data-id="${item.id}" title="Voir détails"><i class="fa-solid fa-eye"></i></button>
+                        <button class="btn-icon edit-status-btn" data-id="${item.id}" title="Changer statut"><i class="fa-solid fa-rotate"></i></button>
+                        <button class="btn-icon copy-btn" data-text="${item.trackingNumber}"><i class="fa-regular fa-copy"></i></button>
+                        ${!state.isSecretary ? `<button class="btn-icon delete-btn" data-id="${item.id}" style="color:var(--danger)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>` : ''}
+                    </td>
+                </tr>
+            `).join('');
         }
     }
 
@@ -426,11 +528,11 @@ export class ShipmentsView extends BaseView {
     async renderAssignmentUI(shipment, container) {
         container.innerHTML = `
             <h4 style="margin-bottom:0.5rem; color:var(--text-light)">Assigner à un Agent pour Livraison</h4>
-            <div style="display:flex; gap:0.5rem;">
-                <select id="assign-agent-select" class="input" style="flex:1;">
+            <div style="display:flex; gap:0.5rem; flex-direction:column;">
+                <select id="assign-agent-select" class="w-full input">
                     <option value="">Sélectionner un agent...</option>
                 </select>
-                <button id="assign-agent-btn" class="btn btn-primary" data-id="${shipment.id}">Assigner</button>
+                <button id="assign-agent-btn" class="btn btn-primary w-full" data-id="${shipment.id}">Assigner</button>
             </div>
         `;
 

@@ -24,7 +24,7 @@ export class ProfileView extends BaseView {
                 </div>
             </div>
 
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:2rem;">
+            <div class="profile-grid">
                 <!-- Info Section -->
                 <div class="glass-panel">
                     <h3 style="margin-bottom:1.5rem;"><i class="fa-solid fa-info-circle"></i> Informations Personnelles</h3>
@@ -48,7 +48,7 @@ export class ProfileView extends BaseView {
                             <input type="text" class="input" value="${user.role}" disabled style="opacity:0.6;">
                         </div>
                         
-                        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">
+                        <button type="submit" class="btn btn-primary w-full" style="margin-top:1rem;">
                             Mettre à jour le profil
                         </button>
                     </form>
@@ -69,7 +69,7 @@ export class ProfileView extends BaseView {
                             <input type="password" id="confirm-password" class="input" required minlength="6">
                         </div>
                         
-                        <button type="submit" class="btn btn-secondary" style="width:100%; margin-top:1rem;">
+                        <button type="submit" class="btn btn-secondary w-full" style="margin-top:1rem;">
                             Changer le mot de passe
                         </button>
                     </form>

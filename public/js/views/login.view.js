@@ -22,7 +22,7 @@ export class LoginView extends BaseView {
                             <i class="fa-solid fa-lock"></i>
                             <input type="password" id="password" placeholder="Mot de passe" required>
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width:100%">
+                        <button type="submit" class="btn btn-primary w-full">
                             Se connecter <i class="fa-solid fa-arrow-right"></i>
                         </button>
                     </form>

@@ -12,7 +12,7 @@ export class ClientsView extends BaseView {
 
             <div class="glass-panel">
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table table-as-card">
                         <thead>
                             <tr>
                                 <th>Nom</th>
@@ -54,7 +54,7 @@ export class ClientsView extends BaseView {
                             <label>Mot de passe par défaut</label>
                             <input type="text" value="Client@123" readonly disabled style="opacity:0.7">
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width:100%">Créer</button>
+                        <button type="submit" class="btn btn-primary w-full">Créer</button>
                     </form>
                 </div>
             </div>
@@ -112,11 +112,11 @@ export class ClientsView extends BaseView {
 
             tbody.innerHTML = list.map(c => `
                 <tr>
-                    <td><strong>${c.name}</strong></td>
-                    <td>${c.email}</td>
-                    <td>${c.phone || '-'}</td>
-                    <td><span class="badge badge-${c.isActive ? 'success' : 'danger'}">${c.isActive ? 'Actif' : 'Inactif'}</span></td>
-                    <td>
+                    <td data-label="Nom"><strong>${c.name}</strong></td>
+                    <td data-label="Email">${c.email}</td>
+                    <td data-label="Téléphone">${c.phone || '-'}</td>
+                    <td data-label="Statut"><span class="badge badge-${c.isActive ? 'success' : 'danger'}">${c.isActive ? 'Actif' : 'Inactif'}</span></td>
+                    <td data-label="Actions">
                         <button class="btn-icon" title="Voir détails"><i class="fa-solid fa-eye"></i></button>
                         <!-- Add edit/delete if needed -->
                     </td>

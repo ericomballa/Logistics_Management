@@ -245,11 +245,135 @@ label {
     font-size: 0.9rem;
 }
 
+/* Enhanced form layout for mobile */
+@media (max-width: 768px) {
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: 1fr;
+    }
+
+    .form-group {
+        width: 100%;
+    }
+
+    .input-group {
+        width: 100%;
+    }
+
+    input,
+    select,
+    textarea {
+        width: 100%;
+    }
+}
+
+/* Mobile-friendly form controls */
+@media (max-width: 576px) {
+    .form-group {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    input,
+    select,
+    textarea {
+        min-height: 48px; /* Larger touch targets */
+    }
+
+    label {
+        font-size: 0.95rem;
+        margin-bottom: 0.3rem;
+    }
+}
+
+/* Shipment Cards for Mobile */
+@media (max-width: 768px) {
+    .shipment-card {
+        display: table-row;
+    }
+
+    .shipment-card-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        margin-bottom: 1rem;
+        margin-left: auto;
+        margin-right: auto;
+        width: 100%;
+        max-width: 500px; /* Center the card and limit width */
+    }
+
+    .shipment-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0.5rem;
+    }
+
+    .shipment-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .detail-label {
+        font-weight: 500;
+        color: var(--text-muted);
+        flex: 1;
+    }
+
+    .detail-value {
+        flex: 2;
+        text-align: right;
+        color: var(--text-main);
+    }
+
+    .detail-actions {
+        display: flex;
+        justify-content: center; /* Center the action buttons */
+        gap: 0.5rem;
+        padding-top: 0.5rem;
+        margin-top: 0.5rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .shipment-card td {
+        display: block;
+        padding: 0 !important;
+        border: none !important;
+    }
+}
+
+/* Additional styles for mobile view */
+table.mobile-view {
+    width: 100%;
+    display: block;
+}
+
+table.mobile-view .table-responsive {
+    overflow-x: visible;
+}
+
 /* Tables */
 .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-md);
+    margin: 0;
 }
 
 @media (max-width: 768px) {
@@ -260,6 +384,58 @@ label {
 
     .table-responsive table {
         min-width: 600px;
+    }
+}
+
+/* Enhanced mobile table - Card view for small screens */
+@media (max-width: 768px) {
+    .table-responsive {
+        overflow-x: visible;
+    }
+
+    .table-as-card {
+        display: block;
+    }
+
+    .table-as-card thead {
+        display: none;
+    }
+
+    .table-as-card tbody,
+    .table-as-card tr {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .table-as-card tr {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+    }
+
+    .table-as-card td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        position: relative;
+    }
+
+    .table-as-card td:last-child {
+        border-bottom: none;
+    }
+
+    .table-as-card td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-right: 0.5rem;
     }
 }
 
@@ -387,6 +563,23 @@ tr:hover td {
 
     .modal-container .glass-panel {
         padding: var(--spacing-md);
+    }
+
+    /* Mobile modal header adjustments */
+    .modal-header {
+        padding: 0.5rem 1rem 1rem;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    .modal-header h3 {
+        font-size: 1.2rem;
+        margin: 0;
+    }
+
+    .modal-close {
+        font-size: 1.5rem;
+        padding: 0.25rem;
     }
 }
 
