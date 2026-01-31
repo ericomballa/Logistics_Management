@@ -24,7 +24,7 @@ export class ShipmentsView extends BaseView {
     </div>
 
     <div class="table-responsive">
-        <table class="table table-as-card">
+        <table class="table desktop-table">
             <thead>
                 <tr>
                     <th>Suivi</th>
@@ -42,6 +42,14 @@ export class ShipmentsView extends BaseView {
                 </tr>
             </tbody>
         </table>
+    </div>
+
+    <div id="shipments-cards-list" class="shipments-cards-container" style="display: none;">
+        <div id="shipments-cards">
+            <div class="table-empty-state" id="shipments-loading">
+                Chargement...
+            </div>
+        </div>
     </div>
 
     <div class="pagination-controls responsive-pagination">
@@ -318,8 +326,8 @@ export class ShipmentsView extends BaseView {
             }
         });
 
-        // Table Actions
-        document.getElementById('shipments-table-body').addEventListener('click', async (e) => {
+        // Event delegation for both table and card views
+        document.addEventListener('click', async (e) => {
             const btn = e.target.closest('button');
             if (!btn) return;
 
@@ -337,7 +345,9 @@ export class ShipmentsView extends BaseView {
                 navigator.clipboard.writeText(txt);
                 toast.show('Copié !');
             } else if (btn.classList.contains('edit-status-btn')) {
-                showModal(btn.dataset.id);
+                const id = btn.dataset.id;
+                document.getElementById('status-shipment-id').value = id;
+                document.getElementById('status-modal').style.display = 'flex';
             } else if (btn.classList.contains('view-btn')) {
                 const id = btn.dataset.id;
                 try {
@@ -359,15 +369,10 @@ export class ShipmentsView extends BaseView {
             this.totalPages = Math.ceil(total / this.itemsPerPage);
             this.currentPage = currentPage;
 
-            const tbody = document.getElementById('shipments-table-body');
             const startIndex = (currentPage - 1) * this.itemsPerPage + 1;
             const endIndex = Math.min(currentPage * this.itemsPerPage, total);
 
-            if (list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Aucune expédition</td></tr>';
-            } else {
-                this.renderShipmentsList(list, tbody);
-            }
+            this.renderShipmentsList(list, null); // Pass null since we handle both containers internally
 
             // Update pagination info
             document.getElementById('pagination-start').textContent = startIndex;
@@ -384,25 +389,25 @@ export class ShipmentsView extends BaseView {
     }
 
     renderShipmentsList(list, tbody) {
-        // Check if we're on mobile and switch to card view
+        // Check screen size to determine which view to render
         const isMobile = window.innerWidth <= 768;
-        const tableElement = tbody.closest('table');
+        const tableContainer = document.getElementById('shipments-table-body');
+        const cardContainer = document.getElementById('shipments-cards');
 
         if (isMobile) {
-            // Add class to table to indicate mobile view
-            if (tableElement) {
-                tableElement.classList.add('mobile-view');
-                tableElement.classList.remove('desktop-view');
-            }
-
-            tbody.innerHTML = list.map(item => `
-                <tr class="shipment-card">
-                    <td colspan="5">
-                        <div class="shipment-card-content">
-                            <div class="shipment-card-header">
-                                <div class="shipment-tracking" style="font-weight:600; font-family:monospace; color:var(--primary);">${item.trackingNumber}</div>
-                                <div class="shipment-status"><span class="badge badge-info">${item.status}</span></div>
-                            </div>
+            // Render as cards for mobile
+            if (list.length === 0) {
+                cardContainer.innerHTML = '<div class="table-empty-state">Aucune expédition</div>';
+            } else {
+                cardContainer.innerHTML = list.map(item => `
+                    <div class="shipment-card">
+                        <div class="shipment-card-header">
+                            <h3 class="shipment-card-title">
+                                <span class="shipment-tracking">${item.trackingNumber}</span>
+                                <span class="shipment-status"><span class="badge badge-info">${item.status}</span></span>
+                            </h3>
+                        </div>
+                        <div class="shipment-card-body">
                             <div class="shipment-details">
                                 <div class="detail-row">
                                     <span class="detail-label">Destinataire:</span>
@@ -412,38 +417,39 @@ export class ShipmentsView extends BaseView {
                                     <span class="detail-label">Date:</span>
                                     <span class="detail-value">${formatters.date(item.createdAt)}</span>
                                 </div>
-                                <div class="detail-actions">
-                                    <button class="btn-icon view-btn" data-id="${item.id}" title="Voir détails"><i class="fa-solid fa-eye"></i></button>
-                                    <button class="btn-icon edit-status-btn" data-id="${item.id}" title="Changer statut"><i class="fa-solid fa-rotate"></i></button>
-                                    <button class="btn-icon copy-btn" data-text="${item.trackingNumber}"><i class="fa-regular fa-copy"></i></button>
-                                    ${!state.isSecretary ? `<button class="btn-icon delete-btn" data-id="${item.id}" style="color:var(--danger)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>` : ''}
-                                </div>
                             </div>
                         </div>
-                    </td>
-                </tr>
-            `).join('');
-        } else {
-            // Add class to table to indicate desktop view
-            if (tableElement) {
-                tableElement.classList.add('desktop-view');
-                tableElement.classList.remove('mobile-view');
+                        <div class="shipment-card-footer">
+                            <div class="detail-actions">
+                                <button class="btn-icon view-btn" data-id="${item.id}" title="Voir détails"><i class="fa-solid fa-eye"></i></button>
+                                <button class="btn-icon edit-status-btn" data-id="${item.id}" title="Changer statut"><i class="fa-solid fa-rotate"></i></button>
+                                <button class="btn-icon copy-btn" data-text="${item.trackingNumber}"><i class="fa-regular fa-copy"></i></button>
+                                ${!state.isSecretary ? `<button class="btn-icon delete-btn" data-id="${item.id}" style="color:var(--danger)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
             }
-
-            tbody.innerHTML = list.map(item => `
-                <tr>
-                    <td data-label="Suivi" style="font-weight:600; font-family:monospace;">${item.trackingNumber}</td>
-                    <td data-label="Destinataire">${item.recipientName || item.receiverName}</td>
-                    <td data-label="Date">${formatters.date(item.createdAt)}</td>
-                    <td data-label="Statut"><span class="badge badge-info">${item.status}</span></td>
-                    <td data-label="Actions">
-                        <button class="btn-icon view-btn" data-id="${item.id}" title="Voir détails"><i class="fa-solid fa-eye"></i></button>
-                        <button class="btn-icon edit-status-btn" data-id="${item.id}" title="Changer statut"><i class="fa-solid fa-rotate"></i></button>
-                        <button class="btn-icon copy-btn" data-text="${item.trackingNumber}"><i class="fa-regular fa-copy"></i></button>
-                        ${!state.isSecretary ? `<button class="btn-icon delete-btn" data-id="${item.id}" style="color:var(--danger)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>` : ''}
-                    </td>
-                </tr>
-            `).join('');
+        } else {
+            // Render as table for desktop
+            if (list.length === 0) {
+                tableContainer.innerHTML = '<tr><td colspan="5" style="text-align:center">Aucune expédition</td></tr>';
+            } else {
+                tableContainer.innerHTML = list.map(item => `
+                    <tr>
+                        <td data-label="Suivi" style="font-weight:600; font-family:monospace;">${item.trackingNumber}</td>
+                        <td data-label="Destinataire">${item.recipientName || item.receiverName}</td>
+                        <td data-label="Date">${formatters.date(item.createdAt)}</td>
+                        <td data-label="Statut"><span class="badge badge-info">${item.status}</span></td>
+                        <td data-label="Actions">
+                            <button class="btn-icon view-btn" data-id="${item.id}" title="Voir détails"><i class="fa-solid fa-eye"></i></button>
+                            <button class="btn-icon edit-status-btn" data-id="${item.id}" title="Changer statut"><i class="fa-solid fa-rotate"></i></button>
+                            <button class="btn-icon copy-btn" data-text="${item.trackingNumber}"><i class="fa-regular fa-copy"></i></button>
+                            ${!state.isSecretary ? `<button class="btn-icon delete-btn" data-id="${item.id}" style="color:var(--danger)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>` : ''}
+                        </td>
+                    </tr>
+                `).join('');
+            }
         }
     }
 

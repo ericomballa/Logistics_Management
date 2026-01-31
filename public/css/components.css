@@ -288,73 +288,118 @@ label {
 }
 
 /* Shipment Cards for Mobile */
+.shipment-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+.shipment-card-header {
+    background: rgba(99, 102, 241, 0.15); /* Light blue background similar to w3-css */
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.shipment-card-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0;
+}
+
+.shipment-tracking {
+    font-weight: 600;
+    font-family: monospace;
+    color: var(--primary);
+}
+
+.shipment-status {
+    display: inline-block;
+}
+
+.shipment-card-body {
+    padding: 1rem;
+}
+
+.shipment-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.detail-label {
+    font-weight: 500;
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.detail-value {
+    flex: 2;
+    text-align: right;
+    color: var(--text-main);
+}
+
+.shipment-card-footer {
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.detail-actions {
+    display: flex;
+    justify-content: center; /* Center the action buttons */
+    gap: 0.5rem;
+}
+
+/* Desktop table view */
+.desktop-table {
+    display: table;
+}
+
+/* Mobile card view */
 @media (max-width: 768px) {
-    .shipment-card {
-        display: table-row;
+    .desktop-table {
+        display: none;
     }
 
-    .shipment-card-content {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        padding: 1rem;
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-        margin-bottom: 1rem;
+    #shipments-cards-list {
+        display: block !important;
+    }
+
+    .shipment-card {
         margin-left: auto;
         margin-right: auto;
-        width: 100%;
         max-width: 500px; /* Center the card and limit width */
     }
 
-    .shipment-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid var(--border);
-        margin-bottom: 0.5rem;
-    }
-
-    .shipment-details {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .detail-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.25rem 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .detail-label {
-        font-weight: 500;
-        color: var(--text-muted);
-        flex: 1;
-    }
-
-    .detail-value {
-        flex: 2;
-        text-align: right;
-        color: var(--text-main);
-    }
-
     .detail-actions {
-        display: flex;
-        justify-content: center; /* Center the action buttons */
-        gap: 0.5rem;
-        padding-top: 0.5rem;
-        margin-top: 0.5rem;
-        border-top: 1px solid var(--border);
+        flex-wrap: wrap;
+        justify-content: center;
     }
 
-    .shipment-card td {
-        display: block;
-        padding: 0 !important;
-        border: none !important;
+    .detail-actions .btn-icon {
+        margin: 0.25rem;
+    }
+}
+
+/* Desktop view */
+@media (min-width: 769px) {
+    #shipments-cards-list {
+        display: none;
+    }
+
+    .desktop-table {
+        display: table;
     }
 }
 
