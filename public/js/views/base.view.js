@@ -54,13 +54,16 @@ export class BaseView {
                             <i class="fa-solid fa-warehouse"></i> <span>Entrepôts</span>
                         </a>
                         ${state.isAdmin ? `
+                        <a href="#audit-trail" class="nav-item ${activeNav === 'audit-trail' ? 'active' : ''}">
+                            <i class="fa-solid fa-clipboard-list"></i> <span>Journal d'Audit</span>
+                        </a>
+                        ` : ''}
                         <a href="#billing" class="nav-item ${activeNav === 'billing' ? 'active' : ''}">
                             <i class="fa-solid fa-file-invoice-dollar"></i> <span>Facturation</span>
                         </a>
                         <a href="#reports" class="nav-item ${activeNav === 'reports' ? 'active' : ''}">
                             <i class="fa-solid fa-chart-line"></i> <span>Rapports</span>
                         </a>
-                        ` : ''}
                         ` : ''}
                     </nav>
 

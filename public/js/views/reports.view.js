@@ -17,13 +17,15 @@ export class ReportsView extends BaseView {
                 </div>
             </div>
 
-            <!-- Dashboard Stats -->
-            <div id="dashboard-stats" class="stats-grid" style="margin-bottom:2rem;">
-                ${renderLoader()}
+            <!-- Dashboard Stats - Only for Admins -->
+            <div id="dashboard-stats-section">
+                <div id="dashboard-stats" class="stats-grid" style="margin-bottom:2rem;">
+                    ${renderLoader()}
+                </div>
             </div>
 
-            <!-- Charts Section -->
-            <div class="stats-grid" style="margin-bottom:2rem;">
+            <!-- Charts Section - Only for Admins -->
+            <div id="charts-section" class="stats-grid" style="margin-bottom:2rem;">
                 <!-- Shipments by Status Chart -->
                 <div class="glass-panel">
                     <h3 style="margin-bottom:1rem;"><i class="fa-solid fa-chart-pie"></i> Expéditions par Statut</h3>
@@ -41,10 +43,10 @@ export class ReportsView extends BaseView {
                 </div>
             </div>
 
-            <!-- Revenue Report -->
-            <div class="glass-panel" style="margin-bottom:2rem;">
+            <!-- Revenue Report - Only for Admins -->
+            <div id="revenue-report-section" class="glass-panel" style="margin-bottom:2rem;">
                 <h3 style="margin-bottom:1rem;"><i class="fa-solid fa-money-bill-trend-up"></i> Rapport de Revenus</h3>
-                
+
                 <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items: flex-end;">
                     <div style="flex:1; min-width:200px;">
                         <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Date de début</label>
@@ -81,7 +83,7 @@ export class ReportsView extends BaseView {
                 </div>
             </div>
 
-            <!-- Daily Revenue Report -->
+            <!-- Daily Revenue Report - Available for Secretaries -->
             <div class="glass-panel" style="margin-bottom:2rem;">
                 <h3 style="margin-bottom:1rem;"><i class="fa-solid fa-calendar-day"></i> Revenus Journaliers</h3>
 
@@ -125,8 +127,8 @@ export class ReportsView extends BaseView {
                 </div>
             </div>
 
-            <!-- Average Delivery Time -->
-            <div class="glass-panel">
+            <!-- Average Delivery Time - Only for Admins -->
+            <div id="delivery-time-section" class="glass-panel">
                 <h3 style="margin-bottom:1rem;"><i class="fa-solid fa-clock"></i> Temps de Livraison Moyen</h3>
                 <div id="delivery-time-container">
                     ${renderLoader()}
@@ -137,23 +139,42 @@ export class ReportsView extends BaseView {
         this.root.innerHTML = layout;
         this.bindLogout();
 
-        // Load all data
-        await this.loadDashboardStats();
-        await this.loadShipmentsByStatus();
-        await this.loadShipmentsByOrigin();
-        await this.loadAverageDeliveryTime();
+        // Load data based on user role
+        if (window.state && (window.state.isAdmin || window.state.get('user')?.role === 'ADMIN')) {
+            // Admins can see all reports
+            await this.loadDashboardStats();
+            await this.loadShipmentsByStatus();
+            await this.loadShipmentsByOrigin();
+            await this.loadAverageDeliveryTime();
 
-        // Bind revenue report button
-        this.bindRevenueReport();
+            // Show admin-only sections
+            document.getElementById('dashboard-stats-section').style.display = 'block';
+            document.getElementById('charts-section').style.display = 'grid';
+            document.getElementById('revenue-report-section').style.display = 'block';
+            document.getElementById('delivery-time-section').style.display = 'block';
+        } else {
+            // Hide admin-only sections for secretaries
+            const dashboardSection = document.getElementById('dashboard-stats-section');
+            const chartsSection = document.getElementById('charts-section');
+            const revenueReportSection = document.getElementById('revenue-report-section');
+            const deliveryTimeSection = document.getElementById('delivery-time-section');
 
-        // Bind daily revenue report button
+            if (dashboardSection) dashboardSection.style.display = 'none';
+            if (chartsSection) chartsSection.style.display = 'none';
+            if (revenueReportSection) revenueReportSection.style.display = 'none';
+            if (deliveryTimeSection) deliveryTimeSection.style.display = 'none';
+        }
+
+        // Both admins and secretaries can see daily reports
+        // Bind daily revenue report button (available to both roles)
         this.bindDailyRevenueReport();
-
-        // Set default dates (last 30 days)
-        this.setDefaultDates();
-
-        // Set today's date as default for daily revenue
         this.setTodayAsDefaultDailyRevenueDate();
+
+        // Bind revenue report button (only for admins)
+        if (window.state && (window.state.isAdmin || window.state.get('user')?.role === 'ADMIN')) {
+            this.bindRevenueReport();
+            this.setDefaultDates();
+        }
     }
 
     async loadDashboardStats() {
@@ -390,6 +411,12 @@ export class ReportsView extends BaseView {
         const btn = document.getElementById('load-revenue-btn');
         if (btn) {
             btn.addEventListener('click', async () => {
+                // Check if user is admin before allowing access
+                if (!(window.state && (window.state.isAdmin || window.state.get('user')?.role === 'ADMIN'))) {
+                    alert('Accès refusé. Seuls les administrateurs peuvent accéder à cette fonctionnalité.');
+                    return;
+                }
+
                 const startDate = document.getElementById('revenue-start-date').value;
                 const endDate = document.getElementById('revenue-end-date').value;
 

@@ -52,7 +52,7 @@ export class ReportsController {
   }
 
   @Get('revenue/daily')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SECRETARY)
   @ApiOperation({ summary: 'Get daily revenue report' })
   getDailyRevenue(
     @Query('date') date: string,

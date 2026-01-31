@@ -62,10 +62,11 @@ export class BillingView extends BaseView {
                                     <th>Montant</th>
                                     <th>Statut</th>
                                     <th>Date</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="invoices-table">
-                                <tr><td colspan="5" style="text-align:center">Chargement...</td></tr>
+                                <tr><td colspan="6" style="text-align:center">Chargement...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -87,8 +88,8 @@ export class BillingView extends BaseView {
                     </div>
                 </div>
 
-                <!-- Tariffs Preview -->
-                <div class="glass-panel">
+                <!-- Tariffs Preview - Only for Admins -->
+                <div id="tariffs-section" class="glass-panel">
                     <h3>Tarifs Actuels</h3>
                     <div id="tariffs-list" style="display:flex; flex-direction:column; gap:1rem; margin-top:1rem;">
                         <!-- Populated by JS -->
@@ -134,7 +135,17 @@ export class BillingView extends BaseView {
         this.root.innerHTML = layout;
         this.bindEvents();
         this.loadInvoices('', 1);
-        this.loadTariffs();
+
+        // Only show tariffs to admins, not to secretaries
+        if (window.state && (window.state.isAdmin || window.state.get('user')?.role === 'ADMIN')) {
+            this.loadTariffs();
+        } else {
+            // Hide tariffs section for secretaries
+            const tariffsSection = document.getElementById('tariffs-section');
+            if (tariffsSection) {
+                tariffsSection.style.display = 'none';
+            }
+        }
     }
 
     currentPage = 1;
@@ -226,7 +237,12 @@ export class BillingView extends BaseView {
                 modal.style.display = 'none';
                 this.loadInvoices(this.currentInvoiceQuery, this.currentPage);
             } catch (err) {
-                toast.error('Erreur création facture');
+                // Check if it's a permission error
+                if (err.message && err.message.includes('Access denied')) {
+                    toast.error('Accès refusé. Vous n\'avez pas les autorisations nécessaires pour créer une facture.');
+                } else {
+                    toast.error('Erreur création facture');
+                }
             }
         });
     }

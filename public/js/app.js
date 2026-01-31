@@ -25,8 +25,9 @@ async function init() {
     router.add('clients', () => import('./views/clients.view.js').then(m => m.ClientsView), 'ADMIN_OR_SECRETARY');
     router.add('agencies', () => import('./views/admin-agencies.view.js').then(m => m.AdminAgenciesView), 'ADMIN_OR_SECRETARY');
     router.add('warehouses', () => import('./views/warehouse.view.js').then(m => m.WarehouseView), 'ADMIN_OR_SECRETARY');
-    router.add('billing', () => import('./views/billing.view.js').then(m => m.BillingView), 'ADMIN');
-    router.add('reports', () => import('./views/reports.view.js').then(m => m.ReportsView), 'ADMIN');
+    router.add('audit-trail', () => import('./views/audit-trail.view.js').then(m => m.AuditTrailView), 'ADMIN');
+    router.add('billing', () => import('./views/billing.view.js').then(m => m.BillingView), 'ADMIN_OR_SECRETARY');
+    router.add('reports', () => import('./views/reports.view.js').then(m => m.ReportsView), 'ADMIN_OR_SECRETARY');
 
     // Public public tracking (landing)
     // router.add('home', ...);
