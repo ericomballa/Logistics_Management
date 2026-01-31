@@ -15,7 +15,7 @@ export class WarehouseView extends BaseView {
             
              <div class="glass-panel">
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table table-as-card">
                         <thead>
                             <tr>
                                 <th>Code</th>
@@ -74,7 +74,7 @@ export class WarehouseView extends BaseView {
                                 <input type="number" id="capacity" placeholder="1000">
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Sauvegarder</button>
+                        <button type="submit" class="btn btn-primary w-full" style="margin-top:1rem;">Sauvegarder</button>
                     </form>
                 </div>
             </div>
@@ -108,7 +108,7 @@ export class WarehouseView extends BaseView {
                     </div>
 
                     <div class="table-responsive">
-                        <table class="table">
+                        <table class="table table-as-card">
                             <thead>
                                 <tr>
                                     <th>Expédition</th>
@@ -237,12 +237,12 @@ export class WarehouseView extends BaseView {
 
             tbody.innerHTML = warehouses.map(w => `
                 <tr>
-                    <td><span class="badge badge-info">${w.code}</span></td>
-                    <td><strong>${w.name}</strong></td>
-                    <td>${w.country}</td>
-                    <td>${w.city}</td>
-                    <td>${w.capacity || '-'} m³</td>
-                    <td>
+                    <td data-label="Code"><span class="badge badge-info">${w.code}</span></td>
+                    <td data-label="Nom"><strong>${w.name}</strong></td>
+                    <td data-label="Pays">${w.country}</td>
+                    <td data-label="Ville">${w.city}</td>
+                    <td data-label="Capacité">${w.capacity || '-'} m³</td>
+                    <td data-label="Actions">
                         <button class="btn-icon inventory-btn" data-id="${w.id}" data-name="${w.name}" title="Inventaire"><i class="fa-solid fa-boxes-stacked"></i></button>
                         <button class="btn-icon edit-btn" data-id="${w.id}" data-json='${JSON.stringify(w).replace(/'/g, "&apos;")}' title="Modifier"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn-icon delete-btn" data-id="${w.id}" style="color:var(--danger)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
@@ -274,10 +274,10 @@ export class WarehouseView extends BaseView {
 
             list.innerHTML = inventory.map(item => `
                 <tr>
-                    <td class="font-mono">${item.shipment?.trackingNumber || item.shipmentId.substring(0, 8)}</td>
-                    <td><span class="badge badge-info">${item.location}</span></td>
-                    <td>${new Date(item.receivedAt).toLocaleDateString()}</td>
-                    <td>
+                    <td data-label="Expédition" class="font-mono">${item.shipment?.trackingNumber || item.shipmentId.substring(0, 8)}</td>
+                    <td data-label="Emplacement"><span class="badge badge-info">${item.location}</span></td>
+                    <td data-label="Reçu le">${new Date(item.receivedAt).toLocaleDateString()}</td>
+                    <td data-label="Actions">
                         <button class="btn btn-sm btn-outline-danger dispatch-btn" data-id="${item.id}">Décharger</button>
                     </td>
                 </tr>

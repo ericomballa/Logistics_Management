@@ -121,7 +121,7 @@ export class ShipmentsService {
 
     if (filters?.search) {
       queryBuilder.andWhere(
-        '(shipment.trackingNumber LIKE :search OR shipment.recipientName LIKE :search OR shipment.senderName LIKE :search)',
+        '(shipment.trackingNumber LIKE :search OR shipment.receiverName LIKE :search OR shipment.senderName LIKE :search OR client.name LIKE :search)',
         { search: `%${filters.search}%` }
       );
     }

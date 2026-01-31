@@ -12,7 +12,7 @@ export class AdminUsersView extends BaseView {
             
             <div class="glass-panel">
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table table-as-card">
                         <thead>
                             <tr>
                                 <th>Nom</th>
@@ -23,7 +23,7 @@ export class AdminUsersView extends BaseView {
                             </tr>
                         </thead>
                         <tbody id="users-table-body">
-                            <tr><td colspan="5" style="text-align:center">Chargement...</td></tr>
+                            <tr><td colspan="5" class="table-empty-state">Chargement...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -54,7 +54,7 @@ export class AdminUsersView extends BaseView {
                                 <option value="">Aucune Agence</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width:100%">Sauvegarder</button>
+                        <button type="submit" class="btn btn-primary w-full">Sauvegarder</button>
                     </form>
                 </div>
             </div>
@@ -137,15 +137,15 @@ export class AdminUsersView extends BaseView {
             const tbody = document.getElementById('users-table-body');
             tbody.innerHTML = users.map(user => `
                 <tr>
-                    <td>${user.name || '-'}</td>
-                    <td>${user.email}</td>
-                    <td>${user.role}</td>
-                    <td>
+                    <td data-label="Nom">${user.name || '-'}</td>
+                    <td data-label="Email">${user.email}</td>
+                    <td data-label="Rôle">${user.role}</td>
+                    <td data-label="Statut">
                         <span class="badge ${user.isActive ? 'badge-success' : 'badge-danger'}">
                             ${user.isActive ? 'Actif' : 'Inactif'}
                         </span>
                     </td>
-                    <td>
+                    <td data-label="Actions">
                         <button class="btn-icon edit-btn" data-id="${user.id}" data-agency="${user.agencyId || ''}"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn-icon toggle-btn" data-id="${user.id}" data-active="${user.isActive}">
                             <i class="fa-solid ${user.isActive ? 'fa-ban' : 'fa-check'}"></i>

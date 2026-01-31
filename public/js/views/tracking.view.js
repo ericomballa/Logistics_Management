@@ -15,7 +15,7 @@ export class TrackingView extends BaseView {
             
             <div class="glass-panel" style="max-width:600px; margin:0 auto; text-align:center;">
                 <h3 style="margin-bottom:1rem;">Entrez votre numéro de suivi</h3>
-                <div style="display:flex; gap:0.5rem; margin-bottom:2rem;">
+                <div class="tracking-input-group">
                     <input type="text" id="track-input" placeholder="ex: TRK-12345678" style="flex:1">
                     <button id="track-btn" class="btn btn-primary"><i class="fa-solid fa-search"></i></button>
                 </div>

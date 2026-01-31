@@ -47,7 +47,7 @@ export class AdminAgenciesView extends BaseView {
                             <div class="form-group"><input type="text" id="phone" placeholder="Téléphone"></div>
                             <div class="form-group"><input type="email" id="email" placeholder="Email"></div>
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width:100%">Sauvegarder</button>
+                        <button type="submit" class="btn btn-primary w-full">Sauvegarder</button>
                     </form>
                 </div>
             </div>

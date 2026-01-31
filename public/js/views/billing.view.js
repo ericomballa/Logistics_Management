@@ -124,7 +124,7 @@ export class BillingView extends BaseView {
                             <label>Date d'échéance</label>
                             <input type="date" id="dueDate" required>
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width:100%">Créer</button>
+                        <button type="submit" class="btn btn-primary w-full">Créer</button>
                     </form>
                 </div>
             </div>
@@ -360,8 +360,8 @@ export class BillingView extends BaseView {
         const content = `
             <div class="header">
                 <div>
-                    <h1>DLH Logistics</h1>
-                    <p>Douala, Cameroun</p>
+                    <h1>DLH CARGO</h1>
+                    <p>Yaounde, Cameroun</p>
                     <p>contact@dlh-logistics.cm</p>
                     <p>+237 699 00 00 00</p>
                 </div>
@@ -481,7 +481,7 @@ export class BillingView extends BaseView {
                                 <option value="OVERDUE">EN RETARD</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width:100%">Enregistrer</button>
+                        <button type="submit" class="btn btn-primary w-full">Enregistrer</button>
                     </form>
                 </div>
             </div>
