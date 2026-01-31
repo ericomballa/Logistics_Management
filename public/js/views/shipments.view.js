@@ -37,7 +37,10 @@ export class ShipmentsView extends BaseView {
             <tbody id="shipments-table-body">
                 <tr>
                     <td colspan="5" class="table-empty-state">
-                        Chargement...
+                        <div id="shipments-loading" class="loading-container">
+                            <div class="spinner"></div>
+                            <span>Chargement...</span>
+                        </div>
                     </td>
                 </tr>
             </tbody>
@@ -46,8 +49,9 @@ export class ShipmentsView extends BaseView {
 
     <div id="shipments-cards-list" class="shipments-cards-container" style="display: none;">
         <div id="shipments-cards">
-            <div class="table-empty-state" id="shipments-loading">
-                Chargement...
+            <div id="shipments-cards-loading" class="loading-container">
+                <div class="spinner"></div>
+                <span>Chargement...</span>
             </div>
         </div>
     </div>
@@ -279,7 +283,38 @@ export class ShipmentsView extends BaseView {
         document.getElementById('search-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 const searchValue = e.target.value.trim();
-                this.currentQuery = searchValue ? `search=${encodeURIComponent(searchValue)}` : '';
+                if (searchValue) {
+                    // Show loading indicator
+                    this.showLoading();
+                    // Search by tracking number or recipient name
+                    this.currentQuery = `search=${encodeURIComponent(searchValue)}`;
+                    this.currentPage = 1;
+                    this.loadShipments(this.currentQuery, this.currentPage);
+                } else {
+                    this.currentQuery = '';
+                    this.currentPage = 1;
+                    this.loadShipments(this.currentQuery, this.currentPage);
+                }
+            }
+        });
+
+        // Also add search on input change with debounce to avoid too many API calls
+        let searchTimeout;
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const searchValue = e.target.value.trim();
+
+            if (searchValue) {
+                // Show loading indicator
+                this.showLoading();
+
+                searchTimeout = setTimeout(() => {
+                    this.currentQuery = `search=${encodeURIComponent(searchValue)}`;
+                    this.currentPage = 1;
+                    this.loadShipments(this.currentQuery, this.currentPage);
+                }, 500); // 500ms delay
+            } else {
+                this.currentQuery = '';
                 this.currentPage = 1;
                 this.loadShipments(this.currentQuery, this.currentPage);
             }
@@ -383,8 +418,25 @@ export class ShipmentsView extends BaseView {
             // Update pagination buttons
             document.getElementById('prev-page').disabled = currentPage <= 1;
             document.getElementById('next-page').disabled = currentPage >= this.totalPages;
+
+            // Handle no results case when searching
+            if (query && list.length === 0) {
+                setTimeout(() => {
+                    toast.show('Aucun résultat trouvé pour cette recherche');
+                }, 300); // Delay slightly to ensure UI updates first
+            }
         } catch (err) {
             console.error(err);
+            // Hide loading state and show error
+            const isMobile = window.innerWidth <= 768;
+            const tableContainer = document.getElementById('shipments-table-body');
+            const cardContainer = document.getElementById('shipments-cards');
+
+            if (isMobile) {
+                cardContainer.innerHTML = '<div class="table-empty-state">Erreur de chargement</div>';
+            } else {
+                tableContainer.innerHTML = '<tr><td colspan="5" style="text-align:center">Erreur de chargement</td></tr>';
+            }
         }
     }
 
@@ -450,6 +502,32 @@ export class ShipmentsView extends BaseView {
                     </tr>
                 `).join('');
             }
+        }
+    }
+
+    showLoading() {
+        const isMobile = window.innerWidth <= 768;
+        const tableContainer = document.getElementById('shipments-table-body');
+        const cardContainer = document.getElementById('shipments-cards');
+
+        if (isMobile) {
+            cardContainer.innerHTML = `
+                <div id="shipments-cards-loading" class="loading-container">
+                    <div class="spinner"></div>
+                    <span>Recherche en cours...</span>
+                </div>
+            `;
+        } else {
+            tableContainer.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align:center; padding: 2rem;">
+                        <div id="shipments-loading" class="loading-container">
+                            <div class="spinner"></div>
+                            <span>Recherche en cours...</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
         }
     }
 
