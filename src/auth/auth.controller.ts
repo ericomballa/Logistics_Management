@@ -52,11 +52,14 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user' })
   @ApiResponse({ status: 200, description: 'User info returned' })
   async getProfile(@CurrentUser() user: any) {
+    console.log('current user', user);
+
     return {
       userId: user.userId,
       email: user.email,
       role: user.role,
       agencyId: user.agencyId,
+      name: user.name,
     };
   }
 

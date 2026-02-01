@@ -4,8 +4,9 @@ import { dataService } from '../services/data.service.js';
 import { toast, formatters } from '../utils/ui.js';
 
 export class ShipmentsView extends BaseView {
-    async render() {
-        const layout = this.renderLayout(`
+  async render() {
+    const layout = this.renderLayout(
+      `
 
 
 <div class="page-header responsive-header">
@@ -37,10 +38,7 @@ export class ShipmentsView extends BaseView {
             <tbody id="shipments-table-body">
                 <tr>
                     <td colspan="5" class="table-empty-state">
-                        <div id="shipments-loading" class="loading-container">
-                            <div class="spinner"></div>
-                            <span>Chargement...</span>
-                        </div>
+                        Chargement...
                     </td>
                 </tr>
             </tbody>
@@ -49,9 +47,8 @@ export class ShipmentsView extends BaseView {
 
     <div id="shipments-cards-list" class="shipments-cards-container" style="display: none;">
         <div id="shipments-cards">
-            <div id="shipments-cards-loading" class="loading-container">
-                <div class="spinner"></div>
-                <span>Chargement...</span>
+            <div class="table-empty-state" id="shipments-loading">
+                Chargement...
             </div>
         </div>
     </div>
@@ -172,286 +169,252 @@ export class ShipmentsView extends BaseView {
                     </form>
                 </div>
             </div>
-`, 'shipments');
+`,
+      'shipments',
+    );
 
-        this.root.innerHTML = layout;
-        this.bindLogout();
-        this.bindEvents();
-        this.loadClients();
-        this.loadStaff(); // Load staff for sender
-        this.setupDetailsModal();
-        this.loadShipments('', 1);
+    this.root.innerHTML = layout;
+    this.bindLogout();
+    this.bindEvents();
+    this.loadClients();
+    this.loadStaff(); // Load staff for sender
+    this.setupDetailsModal();
+    this.loadShipments('', 1);
 
-        // Add resize event listener to handle layout changes
-        window.addEventListener('resize', () => {
-            // Reload the current shipment list to adjust for new screen size
+    // Add resize event listener to handle layout changes
+    window.addEventListener('resize', () => {
+      // Reload the current shipment list to adjust for new screen size
+      this.loadShipments(this.currentQuery, this.currentPage);
+    });
+  }
+
+  async loadStaff() {
+    try {
+      const select = document.getElementById('senderName');
+      if (!select) return;
+      // Fetch all users and filter
+      const res = await dataService.getUsers();
+      const users = res.data || res;
+      // Filter roles: ADMIN, SUPER_ADMIN, AGENT, SECRETARY
+      const staff = users.filter((u) =>
+        ['ADMIN', 'SUPER_ADMIN', 'AGENT', 'SECRETARY'].includes(u.role),
+      );
+
+      select.innerHTML =
+        '<option value="">Sélectionner un expéditeur...</option>' +
+        staff.map((u) => `<option value="${u.name}">${u.name} (${u.role})</option>`).join('');
+    } catch (e) {
+      console.error('Staff load error', e);
+      const select = document.getElementById('senderName');
+      if (select) select.innerHTML = '<option value="">Erreur chargement (Admin required)</option>';
+    }
+  }
+
+  async loadClients() {
+    try {
+      const select = document.getElementById('shipment-client-id');
+      if (!select) return;
+
+      const res = await dataService.getClients();
+      this.clients = res.data || res; // Store clients for auto-fill
+
+      select.innerHTML =
+        '<option value="">Sélectionner un client (Moi-même par défaut)</option>' +
+        this.clients.map((c) => `<option value="${c.id}">${c.name}</option>`).join('');
+
+      // Auto-fill listener
+      select.addEventListener('change', (e) => {
+        const clientId = e.target.value;
+        if (clientId && this.clients) {
+          const client = this.clients.find((c) => c.id === clientId);
+          if (client) {
+            document.getElementById('recipientName').value = client.name || '';
+            document.getElementById('recipientPhone').value = client.phone || '';
+            // Also fill address if available and empty
+            const addressInput = document.getElementById('recipientAddress');
+            if (client.address) addressInput.value = client.address;
+          }
+        }
+      });
+    } catch (e) {
+      console.error('Clients load error', e);
+    }
+  }
+
+  currentPage = 1;
+  totalPages = 1;
+  itemsPerPage = 10;
+  currentQuery = '';
+
+  bindEvents() {
+    const createModal = document.getElementById('create-modal');
+    const openCreateBtn = document.getElementById('new-shipment-btn');
+    const closeCreateBtn = createModal.querySelector('.modal-close');
+
+    if (openCreateBtn)
+      openCreateBtn.addEventListener('click', () => (createModal.style.display = 'flex'));
+    if (closeCreateBtn)
+      closeCreateBtn.addEventListener('click', () => (createModal.style.display = 'none'));
+
+    document.getElementById('shipment-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        clientId: document.getElementById('shipment-client-id').value || undefined,
+        senderName: document.getElementById('senderName').value,
+        senderAddress: document.getElementById('senderAddress').value,
+        senderPhone: document.getElementById('senderPhone').value,
+        recipientName: document.getElementById('recipientName').value,
+        receiverPhone: document.getElementById('recipientPhone').value, // Add receiver phone
+        recipientAddress: document.getElementById('recipientAddress').value,
+        origin: document.getElementById('origin').value,
+        originCity: document.getElementById('originCity').value,
+        destination: document.getElementById('destination').value,
+        destinationCity: document.getElementById('destinationCity').value,
+        weight: Number(document.getElementById('weight').value),
+        dimensions: document.getElementById('dimensions').value,
+        estimatedDeliveryDate: document.getElementById('estimatedDeliveryDate').value,
+        serviceType: document.getElementById('serviceType').value,
+      };
+
+      try {
+        await dataService.createShipment(data);
+        toast.success('Expédition créée');
+        e.target.reset();
+        createModal.style.display = 'none';
+        this.loadShipments(this.currentQuery, this.currentPage);
+      } catch (err) {
+        toast.error(err.message || 'Erreur création');
+      }
+    });
+
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const searchValue = e.target.value.trim();
+        this.currentQuery = searchValue ? `search=${encodeURIComponent(searchValue)}` : '';
+        this.currentPage = 1;
+        this.loadShipments(this.currentQuery, this.currentPage);
+      }
+    });
+
+    // Pagination Events
+    document.getElementById('prev-page').addEventListener('click', () => {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+        this.loadShipments(this.currentQuery, this.currentPage);
+      }
+    });
+
+    document.getElementById('next-page').addEventListener('click', () => {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+        this.loadShipments(this.currentQuery, this.currentPage);
+      }
+    });
+
+    // Modal Logic
+    const modal = document.getElementById('status-modal');
+    const showModal = (id) => {
+      document.getElementById('status-shipment-id').value = id;
+      modal.style.display = 'flex';
+    };
+    const hideModal = () => (modal.style.display = 'none');
+
+    modal.querySelector('.modal-close').addEventListener('click', hideModal);
+
+    document.getElementById('status-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('status-shipment-id').value;
+      const status = document.getElementById('new-status').value;
+      const location = document.getElementById('current-location').value;
+
+      try {
+        await dataService.updateShipment(id, { status, currentLocation: location });
+        toast.success('Statut mis à jour');
+        hideModal();
+        this.loadShipments(this.currentQuery, this.currentPage);
+      } catch (err) {
+        toast.error('Erreur mise à jour');
+      }
+    });
+
+    // Event delegation for both table and card views
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+
+      if (btn.classList.contains('delete-btn')) {
+        const id = btn.dataset.id;
+        if (confirm('Supprimer ?')) {
+          try {
+            await dataService.deleteShipment(id);
+            toast.success('Supprimé');
             this.loadShipments(this.currentQuery, this.currentPage);
-        });
-    }
-
-    async loadStaff() {
-        try {
-            const select = document.getElementById('senderName');
-            if (!select) return;
-            // Fetch all users and filter
-            const res = await dataService.getUsers();
-            const users = res.data || res;
-            // Filter roles: ADMIN, SUPER_ADMIN, AGENT, SECRETARY
-            const staff = users.filter(u => ['ADMIN', 'SUPER_ADMIN', 'AGENT', 'SECRETARY'].includes(u.role));
-
-            select.innerHTML = '<option value="">Sélectionner un expéditeur...</option>' +
-                staff.map(u => `<option value="${u.name}">${u.name} (${u.role})</option>`).join('');
-        } catch (e) {
-            console.error('Staff load error', e);
-            const select = document.getElementById('senderName');
-            if (select) select.innerHTML = '<option value="">Erreur chargement (Admin required)</option>';
+          } catch (err) {
+            toast.error('Erreur supression');
+          }
         }
-    }
-
-    async loadClients() {
+      } else if (btn.classList.contains('copy-btn')) {
+        const txt = btn.dataset.text;
+        navigator.clipboard.writeText(txt);
+        toast.show('Copié !');
+      } else if (btn.classList.contains('edit-status-btn')) {
+        const id = btn.dataset.id;
+        document.getElementById('status-shipment-id').value = id;
+        document.getElementById('status-modal').style.display = 'flex';
+      } else if (btn.classList.contains('view-btn')) {
+        const id = btn.dataset.id;
         try {
-            const select = document.getElementById('shipment-client-id');
-            if (!select) return;
-
-            const res = await dataService.getClients();
-            this.clients = res.data || res; // Store clients for auto-fill
-
-            select.innerHTML = '<option value="">Sélectionner un client (Moi-même par défaut)</option>' +
-                this.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-
-            // Auto-fill listener
-            select.addEventListener('change', (e) => {
-                const clientId = e.target.value;
-                if (clientId && this.clients) {
-                    const client = this.clients.find(c => c.id === clientId);
-                    if (client) {
-                        document.getElementById('recipientName').value = client.name || '';
-                        document.getElementById('recipientPhone').value = client.phone || '';
-                        // Also fill address if available and empty
-                        const addressInput = document.getElementById('recipientAddress');
-                        if (client.address) addressInput.value = client.address;
-                    }
-                }
-            });
-        } catch (e) { console.error('Clients load error', e); }
-    }
-
-    currentPage = 1;
-    totalPages = 1;
-    itemsPerPage = 10;
-    currentQuery = '';
-
-    bindEvents() {
-        const createModal = document.getElementById('create-modal');
-        const openCreateBtn = document.getElementById('new-shipment-btn');
-        const closeCreateBtn = createModal.querySelector('.modal-close');
-
-        if (openCreateBtn) openCreateBtn.addEventListener('click', () => createModal.style.display = 'flex');
-        if (closeCreateBtn) closeCreateBtn.addEventListener('click', () => createModal.style.display = 'none');
-
-        document.getElementById('shipment-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const data = {
-                clientId: document.getElementById('shipment-client-id').value || undefined,
-                senderName: document.getElementById('senderName').value,
-                senderAddress: document.getElementById('senderAddress').value,
-                senderPhone: document.getElementById('senderPhone').value,
-                recipientName: document.getElementById('recipientName').value,
-                receiverPhone: document.getElementById('recipientPhone').value, // Add receiver phone
-                recipientAddress: document.getElementById('recipientAddress').value,
-                origin: document.getElementById('origin').value,
-                originCity: document.getElementById('originCity').value,
-                destination: document.getElementById('destination').value,
-                destinationCity: document.getElementById('destinationCity').value,
-                weight: Number(document.getElementById('weight').value),
-                dimensions: document.getElementById('dimensions').value,
-                estimatedDeliveryDate: document.getElementById('estimatedDeliveryDate').value,
-                serviceType: document.getElementById('serviceType').value
-            };
-
-            try {
-                await dataService.createShipment(data);
-                toast.success('Expédition créée');
-                e.target.reset();
-                createModal.style.display = 'none';
-                this.loadShipments(this.currentQuery, this.currentPage);
-            } catch (err) {
-                toast.error(err.message || 'Erreur création');
-            }
-        });
-
-        document.getElementById('search-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const searchValue = e.target.value.trim();
-                if (searchValue) {
-                    // Show loading indicator
-                    this.showLoading();
-                    // Search by tracking number or recipient name
-                    this.currentQuery = `search=${encodeURIComponent(searchValue)}`;
-                    this.currentPage = 1;
-                    this.loadShipments(this.currentQuery, this.currentPage);
-                } else {
-                    this.currentQuery = '';
-                    this.currentPage = 1;
-                    this.loadShipments(this.currentQuery, this.currentPage);
-                }
-            }
-        });
-
-        // Also add search on input change with debounce to avoid too many API calls
-        let searchTimeout;
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            const searchValue = e.target.value.trim();
-
-            if (searchValue) {
-                // Show loading indicator
-                this.showLoading();
-
-                searchTimeout = setTimeout(() => {
-                    this.currentQuery = `search=${encodeURIComponent(searchValue)}`;
-                    this.currentPage = 1;
-                    this.loadShipments(this.currentQuery, this.currentPage);
-                }, 500); // 500ms delay
-            } else {
-                this.currentQuery = '';
-                this.currentPage = 1;
-                this.loadShipments(this.currentQuery, this.currentPage);
-            }
-        });
-
-        // Pagination Events
-        document.getElementById('prev-page').addEventListener('click', () => {
-            if (this.currentPage > 1) {
-                this.currentPage--;
-                this.loadShipments(this.currentQuery, this.currentPage);
-            }
-        });
-
-        document.getElementById('next-page').addEventListener('click', () => {
-            if (this.currentPage < this.totalPages) {
-                this.currentPage++;
-                this.loadShipments(this.currentQuery, this.currentPage);
-            }
-        });
-
-        // Modal Logic
-        const modal = document.getElementById('status-modal');
-        const showModal = (id) => {
-            document.getElementById('status-shipment-id').value = id;
-            modal.style.display = 'flex';
-        };
-        const hideModal = () => modal.style.display = 'none';
-
-        modal.querySelector('.modal-close').addEventListener('click', hideModal);
-
-        document.getElementById('status-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('status-shipment-id').value;
-            const status = document.getElementById('new-status').value;
-            const location = document.getElementById('current-location').value;
-
-            try {
-                await dataService.updateShipment(id, { status, currentLocation: location });
-                toast.success('Statut mis à jour');
-                hideModal();
-                this.loadShipments(this.currentQuery, this.currentPage);
-            } catch (err) {
-                toast.error('Erreur mise à jour');
-            }
-        });
-
-        // Event delegation for both table and card views
-        document.addEventListener('click', async (e) => {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-
-            if (btn.classList.contains('delete-btn')) {
-                const id = btn.dataset.id;
-                if (confirm('Supprimer ?')) {
-                    try {
-                        await dataService.deleteShipment(id);
-                        toast.success('Supprimé');
-                        this.loadShipments(this.currentQuery, this.currentPage);
-                    } catch (err) { toast.error('Erreur supression'); }
-                }
-            } else if (btn.classList.contains('copy-btn')) {
-                const txt = btn.dataset.text;
-                navigator.clipboard.writeText(txt);
-                toast.show('Copié !');
-            } else if (btn.classList.contains('edit-status-btn')) {
-                const id = btn.dataset.id;
-                document.getElementById('status-shipment-id').value = id;
-                document.getElementById('status-modal').style.display = 'flex';
-            } else if (btn.classList.contains('view-btn')) {
-                const id = btn.dataset.id;
-                try {
-                    const shipment = await dataService.getShipment(id);
-                    this.showDetails(JSON.parse(JSON.stringify(shipment.data || shipment)));
-                } catch (err) {
-                    console.error(err);
-                    toast.error('Erreur chargement détails');
-                }
-            }
-        });
-    }
-
-    async loadShipments(query = '', page = 1) {
-        try {
-            const res = await dataService.getShipments(query, page, this.itemsPerPage);
-            const { data: list, total, page: currentPage, limit } = res;
-
-            this.totalPages = Math.ceil(total / this.itemsPerPage);
-            this.currentPage = currentPage;
-
-            const startIndex = (currentPage - 1) * this.itemsPerPage + 1;
-            const endIndex = Math.min(currentPage * this.itemsPerPage, total);
-
-            this.renderShipmentsList(list, null); // Pass null since we handle both containers internally
-
-            // Update pagination info
-            document.getElementById('pagination-start').textContent = startIndex;
-            document.getElementById('pagination-end').textContent = endIndex;
-            document.getElementById('pagination-total').textContent = total;
-            document.getElementById('current-page').textContent = currentPage;
-
-            // Update pagination buttons
-            document.getElementById('prev-page').disabled = currentPage <= 1;
-            document.getElementById('next-page').disabled = currentPage >= this.totalPages;
-
-            // Handle no results case when searching
-            if (query && list.length === 0) {
-                setTimeout(() => {
-                    toast.show('Aucun résultat trouvé pour cette recherche');
-                }, 300); // Delay slightly to ensure UI updates first
-            }
+          const shipment = await dataService.getShipment(id);
+          this.showDetails(JSON.parse(JSON.stringify(shipment.data || shipment)));
         } catch (err) {
-            console.error(err);
-            // Hide loading state and show error
-            const isMobile = window.innerWidth <= 768;
-            const tableContainer = document.getElementById('shipments-table-body');
-            const cardContainer = document.getElementById('shipments-cards');
-
-            if (isMobile) {
-                cardContainer.innerHTML = '<div class="table-empty-state">Erreur de chargement</div>';
-            } else {
-                tableContainer.innerHTML = '<tr><td colspan="5" style="text-align:center">Erreur de chargement</td></tr>';
-            }
+          console.error(err);
+          toast.error('Erreur chargement détails');
         }
+      }
+    });
+  }
+
+  async loadShipments(query = '', page = 1) {
+    try {
+      const res = await dataService.getShipments(query, page, this.itemsPerPage);
+      const { data: list, total, page: currentPage, limit } = res;
+
+      this.totalPages = Math.ceil(total / this.itemsPerPage);
+      this.currentPage = currentPage;
+
+      const startIndex = (currentPage - 1) * this.itemsPerPage + 1;
+      const endIndex = Math.min(currentPage * this.itemsPerPage, total);
+
+      this.renderShipmentsList(list, null); // Pass null since we handle both containers internally
+
+      // Update pagination info
+      document.getElementById('pagination-start').textContent = startIndex;
+      document.getElementById('pagination-end').textContent = endIndex;
+      document.getElementById('pagination-total').textContent = total;
+      document.getElementById('current-page').textContent = currentPage;
+
+      // Update pagination buttons
+      document.getElementById('prev-page').disabled = currentPage <= 1;
+      document.getElementById('next-page').disabled = currentPage >= this.totalPages;
+    } catch (err) {
+      console.error(err);
     }
+  }
 
-    renderShipmentsList(list, tbody) {
-        // Check screen size to determine which view to render
-        const isMobile = window.innerWidth <= 768;
-        const tableContainer = document.getElementById('shipments-table-body');
-        const cardContainer = document.getElementById('shipments-cards');
+  renderShipmentsList(list, tbody) {
+    // Check screen size to determine which view to render
+    const isMobile = window.innerWidth <= 768;
+    const tableContainer = document.getElementById('shipments-table-body');
+    const cardContainer = document.getElementById('shipments-cards');
 
-        if (isMobile) {
-            // Render as cards for mobile
-            if (list.length === 0) {
-                cardContainer.innerHTML = '<div class="table-empty-state">Aucune expédition</div>';
-            } else {
-                cardContainer.innerHTML = list.map(item => `
+    if (isMobile) {
+      // Render as cards for mobile
+      if (list.length === 0) {
+        cardContainer.innerHTML = '<div class="table-empty-state">Aucune expédition</div>';
+      } else {
+        cardContainer.innerHTML = list
+          .map(
+            (item) => `
                     <div class="shipment-card">
                         <div class="shipment-card-header">
                             <h3 class="shipment-card-title">
@@ -480,14 +443,19 @@ export class ShipmentsView extends BaseView {
                             </div>
                         </div>
                     </div>
-                `).join('');
-            }
-        } else {
-            // Render as table for desktop
-            if (list.length === 0) {
-                tableContainer.innerHTML = '<tr><td colspan="5" style="text-align:center">Aucune expédition</td></tr>';
-            } else {
-                tableContainer.innerHTML = list.map(item => `
+                `,
+          )
+          .join('');
+      }
+    } else {
+      // Render as table for desktop
+      if (list.length === 0) {
+        tableContainer.innerHTML =
+          '<tr><td colspan="5" style="text-align:center">Aucune expédition</td></tr>';
+      } else {
+        tableContainer.innerHTML = list
+          .map(
+            (item) => `
                     <tr>
                         <td data-label="Suivi" style="font-weight:600; font-family:monospace;">${item.trackingNumber}</td>
                         <td data-label="Destinataire">${item.recipientName || item.receiverName}</td>
@@ -500,41 +468,17 @@ export class ShipmentsView extends BaseView {
                             ${!state.isSecretary ? `<button class="btn-icon delete-btn" data-id="${item.id}" style="color:var(--danger)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>` : ''}
                         </td>
                     </tr>
-                `).join('');
-            }
-        }
+                `,
+          )
+          .join('');
+      }
     }
+  }
 
-    showLoading() {
-        const isMobile = window.innerWidth <= 768;
-        const tableContainer = document.getElementById('shipments-table-body');
-        const cardContainer = document.getElementById('shipments-cards');
+  setupDetailsModal() {
+    if (document.getElementById('details-modal')) return; // Avoid duplicates
 
-        if (isMobile) {
-            cardContainer.innerHTML = `
-                <div id="shipments-cards-loading" class="loading-container">
-                    <div class="spinner"></div>
-                    <span>Recherche en cours...</span>
-                </div>
-            `;
-        } else {
-            tableContainer.innerHTML = `
-                <tr>
-                    <td colspan="5" style="text-align:center; padding: 2rem;">
-                        <div id="shipments-loading" class="loading-container">
-                            <div class="spinner"></div>
-                            <span>Recherche en cours...</span>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }
-    }
-
-    setupDetailsModal() {
-        if (document.getElementById('details-modal')) return; // Avoid duplicates
-
-        const modalHtml = `
+    const modalHtml = `
             <div id="details-modal" class="modal-overlay hidden" style="display:none;">
                 <div class="modal-container glass-panel" style="max-width: 600px;">
                     <div class="modal-header">
@@ -550,17 +494,17 @@ export class ShipmentsView extends BaseView {
                 </div>
             </div>
         `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-        const modal = document.getElementById('details-modal');
-        const hideModal = () => modal.style.display = 'none';
-        modal.querySelector('.modal-close').addEventListener('click', hideModal);
-    }
+    const modal = document.getElementById('details-modal');
+    const hideModal = () => (modal.style.display = 'none');
+    modal.querySelector('.modal-close').addEventListener('click', hideModal);
+  }
 
-    showDetails(shipment) {
-        const modal = document.getElementById('details-modal');
-        const content = document.getElementById('details-content');
-        content.innerHTML = `
+  showDetails(shipment) {
+    const modal = document.getElementById('details-modal');
+    const content = document.getElementById('details-content');
+    content.innerHTML = `
             <div class="col-span-2 border-b pb-4 mb-4">
                 <h2 class="text-primary m-0 font-mono">${shipment.trackingNumber}</h2>
                 <span class="badge badge-info">${shipment.status}</span>
@@ -597,20 +541,20 @@ export class ShipmentsView extends BaseView {
             </div>
         `;
 
-        // Assignment Section
-        const assignSection = document.getElementById('assignment-section');
-        if (state.isAdmin || state.isSecretary) {
-            assignSection.style.display = 'block';
-            this.renderAssignmentUI(shipment, assignSection);
-        } else {
-            assignSection.style.display = 'none';
-        }
-
-        modal.style.display = 'flex';
+    // Assignment Section
+    const assignSection = document.getElementById('assignment-section');
+    if (state.isAdmin || state.isSecretary) {
+      assignSection.style.display = 'block';
+      this.renderAssignmentUI(shipment, assignSection);
+    } else {
+      assignSection.style.display = 'none';
     }
 
-    async renderAssignmentUI(shipment, container) {
-        container.innerHTML = `
+    modal.style.display = 'flex';
+  }
+
+  async renderAssignmentUI(shipment, container) {
+    container.innerHTML = `
             <h4 style="margin-bottom:0.5rem; color:var(--text-light)">Assigner à un Agent pour Livraison</h4>
             <div style="display:flex; gap:0.5rem; flex-direction:column;">
                 <select id="assign-agent-select" class="w-full input">
@@ -620,37 +564,37 @@ export class ShipmentsView extends BaseView {
             </div>
         `;
 
+    try {
+      const res = await dataService.getUsers();
+      const users = res.data || res;
+      const agents = users.filter((u) => u.role === 'AGENT');
+      const select = document.getElementById('assign-agent-select');
+
+      agents.forEach((agent) => {
+        const opt = document.createElement('option');
+        opt.value = agent.id;
+        opt.textContent = `${agent.name} (${agent.phone || 'Pas de tel'})`;
+        if (shipment.agentId === agent.id) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      document.getElementById('assign-agent-btn').addEventListener('click', async (e) => {
+        const agentId = select.value;
+        if (!agentId) return alert('Sélectionnez un agent');
+
         try {
-            const res = await dataService.getUsers();
-            const users = res.data || res;
-            const agents = users.filter(u => u.role === 'AGENT');
-            const select = document.getElementById('assign-agent-select');
-
-            agents.forEach(agent => {
-                const opt = document.createElement('option');
-                opt.value = agent.id;
-                opt.textContent = `${agent.name} (${agent.phone || 'Pas de tel'})`;
-                if (shipment.agentId === agent.id) opt.selected = true;
-                select.appendChild(opt);
-            });
-
-            document.getElementById('assign-agent-btn').addEventListener('click', async (e) => {
-                const agentId = select.value;
-                if (!agentId) return alert('Sélectionnez un agent');
-
-                try {
-                    e.target.disabled = true;
-                    await dataService.assignAgent(shipment.id, agentId);
-                    toast.success('Agent assigné avec succès');
-                    this.loadShipments();
-                } catch (err) {
-                    toast.error('Erreur lors de l\'assignation');
-                } finally {
-                    e.target.disabled = false;
-                }
-            });
-        } catch (e) {
-            console.error('Error loading agents for assignment', e);
+          e.target.disabled = true;
+          await dataService.assignAgent(shipment.id, agentId);
+          toast.success('Agent assigné avec succès');
+          this.loadShipments();
+        } catch (err) {
+          toast.error("Erreur lors de l'assignation");
+        } finally {
+          e.target.disabled = false;
         }
+      });
+    } catch (e) {
+      console.error('Error loading agents for assignment', e);
     }
+  }
 }

@@ -1,53 +1,55 @@
 class State {
-    constructor() {
-        this.listeners = [];
-        this.data = {
-            user: null,
-            authToken: localStorage.getItem('authToken'),
-            theme: 'dark'
-        };
+  constructor() {
+    this.listeners = [];
+    this.data = {
+      user: null,
+      authToken: localStorage.getItem('authToken'),
+      theme: 'dark',
+    };
+  }
+
+  get(key) {
+    return this.data[key];
+  }
+
+  set(key, value) {
+    this.data[key] = value;
+
+    // Persist specific keys
+    if (key === 'authToken') {
+      if (value) localStorage.setItem('authToken', value);
+      else localStorage.removeItem('authToken');
     }
 
-    get(key) {
-        return this.data[key];
-    }
+    this.notify(key, value);
+  }
 
-    set(key, value) {
-        this.data[key] = value;
+  subscribe(listener) {
+    this.listeners.push(listener);
+    return () => (this.listeners = this.listeners.filter((l) => l !== listener));
+  }
 
-        // Persist specific keys
-        if (key === 'authToken') {
-            if (value) localStorage.setItem('authToken', value);
-            else localStorage.removeItem('authToken');
-        }
+  notify(key, value) {
+    this.listeners.forEach((listener) => listener(key, value));
+  }
 
-        this.notify(key, value);
-    }
+  get isAuthenticated() {
+    return !!this.data.authToken;
+  }
 
-    subscribe(listener) {
-        this.listeners.push(listener);
-        return () => this.listeners = this.listeners.filter(l => l !== listener);
-    }
+  get isAdmin() {
+    return (
+      this.data.user && (this.data.user.role === 'ADMIN' || this.data.user.role === 'SUPER_ADMIN')
+    );
+  }
 
-    notify(key, value) {
-        this.listeners.forEach(listener => listener(key, value));
-    }
+  get isAgent() {
+    return this.data.user && this.data.user.role === 'AGENT';
+  }
 
-    get isAuthenticated() {
-        return !!this.data.authToken;
-    }
-
-    get isAdmin() {
-        return this.data.user && (this.data.user.role === 'ADMIN' || this.data.user.role === 'SUPER_ADMIN');
-    }
-
-    get isAgent() {
-        return this.data.user && this.data.user.role === 'AGENT';
-    }
-
-    get isSecretary() {
-        return this.data.user && this.data.user.role === 'SECRETARY';
-    }
+  get isSecretary() {
+    return this.data.user && this.data.user.role === 'SECRETARY';
+  }
 }
 
 export const state = new State();
