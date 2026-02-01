@@ -38,6 +38,13 @@ async function bootstrap() {
     // 2. Create Users
     console.log('👥 Creating users...');
     await usersService.create({
+      email: 'eric@logistics.cm',
+      password: 'Tititata85*',
+      name: 'Erico',
+      phone: '+237670000011',
+      role: UserRole.SUPER_ADMIN,
+    });
+    await usersService.create({
       email: 'admin@logistics.cm',
       password: 'Admin@123',
       name: 'Super Admin',

@@ -21,12 +21,14 @@ export class ReportsController {
   }
 
   @Get('shipments/by-status')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get shipments grouped by status' })
   getShipmentsByStatus() {
     return this.reportsService.getShipmentsByStatus();
   }
 
   @Get('shipments/by-origin')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get shipments grouped by origin' })
   getShipmentsByOrigin() {
     return this.reportsService.getShipmentsByOrigin();
@@ -46,6 +48,7 @@ export class ReportsController {
   }
 
   @Get('delivery-time')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get average delivery time' })
   getAverageDeliveryTime() {
     return this.reportsService.getAverageDeliveryTime();

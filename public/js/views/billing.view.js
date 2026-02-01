@@ -137,7 +137,7 @@ export class BillingView extends BaseView {
         this.loadInvoices('', 1);
 
         // Only show tariffs to admins, not to secretaries
-        if (window.state && (window.state.isAdmin || window.state.get('user')?.role === 'ADMIN')) {
+        if (this.state && (this.state.isAdmin || this.state.get('user')?.role === 'ADMIN')) {
             this.loadTariffs();
         } else {
             // Hide tariffs section for secretaries
