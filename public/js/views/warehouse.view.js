@@ -3,8 +3,9 @@ import { dataService } from '../services/data.service.js';
 import { toast } from '../utils/ui.js';
 
 export class WarehouseView extends BaseView {
-    async render() {
-        const layout = this.renderLayout(`
+  async render() {
+    const layout = this.renderLayout(
+      `
              <div class="page-header">
                 <div>
                     <h2>Gestion des Entrepôts</h2>
@@ -122,120 +123,143 @@ export class WarehouseView extends BaseView {
                     </div>
                 </div>
             </div>
-        `, 'warehouses');
+        `,
+      'warehouses',
+    );
 
-        this.root.innerHTML = layout;
-        this.bindLogout();
-        this.bindEvents();
+    this.root.innerHTML = layout;
+    this.bindLogout();
+    this.bindEvents();
+    this.loadWarehouses();
+  }
+
+  bindEvents() {
+    const modal = document.getElementById('warehouse-modal');
+    const showModal = (title, data = null) => {
+      modal.style.display = 'flex';
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('warehouse-id').value = data ? data.id : '';
+      document.getElementById('name').value = data ? data.name : '';
+      document.getElementById('code').value = data ? data.code : '';
+      document.getElementById('country').value = data ? data.country : '';
+      document.getElementById('city').value = data ? data.city : '';
+      document.getElementById('address').value = data ? data.address : '';
+      document.getElementById('phone').value = data ? data.phone || '' : '';
+      document.getElementById('capacity').value = data ? data.capacity || '' : '';
+    };
+    const hideModal = () => (modal.style.display = 'none');
+
+    document
+      .getElementById('add-warehouse-btn')
+      .addEventListener('click', () => showModal('Ajouter Entrepôt'));
+    modal.querySelector('.modal-close').addEventListener('click', hideModal);
+
+    document.getElementById('warehouse-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('warehouse-id').value;
+      const data = {
+        name: document.getElementById('name').value,
+        code: document.getElementById('code').value,
+        country: document.getElementById('country').value,
+        city: document.getElementById('city').value,
+        address: document.getElementById('address').value,
+        phone: document.getElementById('phone').value,
+        capacity: Number(document.getElementById('capacity').value) || undefined,
+      };
+
+      try {
+        if (id) await dataService.updateWarehouse(id, data);
+        else await dataService.createWarehouse(data);
+        toast.success('Entrepôt enregistré');
+        hideModal();
         this.loadWarehouses();
-    }
+      } catch (err) {
+        toast.error(err.message);
+      }
+    });
 
-    bindEvents() {
-        const modal = document.getElementById('warehouse-modal');
-        const showModal = (title, data = null) => {
-            modal.style.display = 'flex';
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('warehouse-id').value = data ? data.id : '';
-            document.getElementById('name').value = data ? data.name : '';
-            document.getElementById('code').value = data ? data.code : '';
-            document.getElementById('country').value = data ? data.country : '';
-            document.getElementById('city').value = data ? data.city : '';
-            document.getElementById('address').value = data ? data.address : '';
-            document.getElementById('phone').value = data ? (data.phone || '') : '';
-            document.getElementById('capacity').value = data ? (data.capacity || '') : '';
-        };
-        const hideModal = () => modal.style.display = 'none';
+    document.getElementById('warehouses-table-body').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const id = btn.dataset.id;
 
-        document.getElementById('add-warehouse-btn').addEventListener('click', () => showModal('Ajouter Entrepôt'));
-        modal.querySelector('.modal-close').addEventListener('click', hideModal);
+      if (btn.classList.contains('edit-btn')) {
+        const data = JSON.parse(btn.dataset.json);
+        showModal('Modifier Entrepôt', data);
+      } else if (btn.classList.contains('delete-btn')) {
+        if (confirm('Supprimer cet entrepôt ?')) {
+          try {
+            await dataService.deleteWarehouse(id);
+            toast.success('Supprimé');
+            this.loadWarehouses();
+          } catch (err) {
+            toast.error('Erreur suppression');
+          }
+        }
+      } else if (btn.classList.contains('inventory-btn')) {
+        this.showInventory(id, btn.dataset.name);
+      }
+    });
 
-        document.getElementById('warehouse-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('warehouse-id').value;
-            const data = {
-                name: document.getElementById('name').value,
-                code: document.getElementById('code').value,
-                country: document.getElementById('country').value,
-                city: document.getElementById('city').value,
-                address: document.getElementById('address').value,
-                phone: document.getElementById('phone').value,
-                capacity: Number(document.getElementById('capacity').value) || undefined
-            };
+    const invModal = document.getElementById('inventory-modal');
+    invModal
+      .querySelector('.modal-close')
+      .addEventListener('click', () => (invModal.style.display = 'none'));
 
-            try {
-                if (id) await dataService.updateWarehouse(id, data);
-                else await dataService.createWarehouse(data);
-                toast.success('Entrepôt enregistré');
-                hideModal();
-                this.loadWarehouses();
-            } catch (err) { toast.error(err.message); }
-        });
+    document.getElementById('add-inventory-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const warehouseId = invModal.dataset.warehouseId;
+      const shipmentId = document.getElementById('inv-shipment-id').value;
+      const location = document.getElementById('inv-location').value;
 
-        document.getElementById('warehouses-table-body').addEventListener('click', async (e) => {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-            const id = btn.dataset.id;
+      try {
+        await dataService.addToInventory({ warehouseId, shipmentId, location });
+        toast.success("Ajouté à l'inventaire");
+        e.target.reset();
+        this.showInventory(
+          warehouseId,
+          document.getElementById('inventory-modal-title').textContent.split(': ')[1],
+        );
+      } catch (err) {
+        toast.error(err.message);
+      }
+    });
 
-            if (btn.classList.contains('edit-btn')) {
-                const data = JSON.parse(btn.dataset.json);
-                showModal('Modifier Entrepôt', data);
-            } else if (btn.classList.contains('delete-btn')) {
-                if (confirm('Supprimer cet entrepôt ?')) {
-                    try {
-                        await dataService.deleteWarehouse(id);
-                        toast.success('Supprimé');
-                        this.loadWarehouses();
-                    } catch (err) { toast.error('Erreur suppression'); }
-                }
-            } else if (btn.classList.contains('inventory-btn')) {
-                this.showInventory(id, btn.dataset.name);
-            }
-        });
+    document.getElementById('inventory-list').addEventListener('click', async (e) => {
+      const btn = e.target.closest('.dispatch-btn');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const warehouseId = invModal.dataset.warehouseId;
 
-        const invModal = document.getElementById('inventory-modal');
-        invModal.querySelector('.modal-close').addEventListener('click', () => invModal.style.display = 'none');
-
-        document.getElementById('add-inventory-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const warehouseId = invModal.dataset.warehouseId;
-            const shipmentId = document.getElementById('inv-shipment-id').value;
-            const location = document.getElementById('inv-location').value;
-
-            try {
-                await dataService.addToInventory({ warehouseId, shipmentId, location });
-                toast.success('Ajouté à l\'inventaire');
-                e.target.reset();
-                this.showInventory(warehouseId, document.getElementById('inventory-modal-title').textContent.split(': ')[1]);
-            } catch (err) { toast.error(err.message); }
-        });
-
-        document.getElementById('inventory-list').addEventListener('click', async (e) => {
-            const btn = e.target.closest('.dispatch-btn');
-            if (!btn) return;
-            const id = btn.dataset.id;
-            const warehouseId = invModal.dataset.warehouseId;
-
-            if (confirm('Décharger ce colis de l\'entrepôt ?')) {
-                try {
-                    await dataService.dispatchFromInventory(id);
-                    toast.success('Colis déchargé');
-                    this.showInventory(warehouseId, document.getElementById('inventory-modal-title').textContent.split(': ')[1]);
-                } catch (err) { toast.error('Erreur lors du déchargement'); }
-            }
-        });
-    }
-
-    async loadWarehouses() {
+      if (confirm("Décharger ce colis de l'entrepôt ?")) {
         try {
-            const warehouses = await dataService.getWarehouses();
-            const tbody = document.getElementById('warehouses-table-body');
+          await dataService.dispatchFromInventory(id);
+          toast.success('Colis déchargé');
+          this.showInventory(
+            warehouseId,
+            document.getElementById('inventory-modal-title').textContent.split(': ')[1],
+          );
+        } catch (err) {
+          toast.error('Erreur lors du déchargement');
+        }
+      }
+    });
+  }
 
-            if (warehouses.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Aucun entrepôt configuré</td></tr>';
-                return;
-            }
+  async loadWarehouses() {
+    try {
+      const warehouses = await dataService.getWarehouses();
+      const tbody = document.getElementById('warehouses-table-body');
 
-            tbody.innerHTML = warehouses.map(w => `
+      if (warehouses.length === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="6" style="text-align:center">Aucun entrepôt configuré</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = warehouses
+        .map(
+          (w) => `
                 <tr>
                     <td data-label="Code"><span class="badge badge-info">${w.code}</span></td>
                     <td data-label="Nom"><strong>${w.name}</strong></td>
@@ -244,35 +268,40 @@ export class WarehouseView extends BaseView {
                     <td data-label="Capacité">${w.capacity || '-'} m³</td>
                     <td data-label="Actions">
                         <button class="btn-icon inventory-btn" data-id="${w.id}" data-name="${w.name}" title="Inventaire"><i class="fa-solid fa-boxes-stacked"></i></button>
-                        <button class="btn-icon edit-btn" data-id="${w.id}" data-json='${JSON.stringify(w).replace(/'/g, "&apos;")}' title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn-icon edit-btn" data-id="${w.id}" data-json='${JSON.stringify(w).replace(/'/g, '&apos;')}' title="Modifier"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn-icon delete-btn" data-id="${w.id}" style="color:var(--danger)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>
-            `).join('');
-        } catch (err) {
-            console.error(err);
-            document.getElementById('warehouses-table-body').innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--danger)">Erreur de chargement</td></tr>';
-        }
+            `,
+        )
+        .join('');
+    } catch (err) {
+      console.error(err);
+      document.getElementById('warehouses-table-body').innerHTML =
+        '<tr><td colspan="6" style="text-align:center; color:var(--danger)">Erreur de chargement</td></tr>';
     }
+  }
 
-    async showInventory(id, name) {
-        const modal = document.getElementById('inventory-modal');
-        const list = document.getElementById('inventory-list');
-        const title = document.getElementById('inventory-modal-title');
+  async showInventory(id, name) {
+    const modal = document.getElementById('inventory-modal');
+    const list = document.getElementById('inventory-list');
+    const title = document.getElementById('inventory-modal-title');
 
-        title.textContent = `Inventaire: ${name}`;
-        modal.dataset.warehouseId = id;
-        modal.style.display = 'flex';
-        list.innerHTML = '<tr><td colspan="4" style="text-align:center">Chargement...</td></tr>';
+    title.textContent = `Inventaire: ${name}`;
+    modal.dataset.warehouseId = id;
+    modal.style.display = 'flex';
+    list.innerHTML = '<tr><td colspan="4" style="text-align:center">Chargement...</td></tr>';
 
-        try {
-            const inventory = await dataService.getWarehouseInventory(id);
-            if (!inventory || inventory.length === 0) {
-                list.innerHTML = '<tr><td colspan="4" style="text-align:center">Entrepôt vide</td></tr>';
-                return;
-            }
+    try {
+      const inventory = await dataService.getWarehouseInventory(id);
+      if (!inventory || inventory.length === 0) {
+        list.innerHTML = '<tr><td colspan="4" style="text-align:center">Entrepôt vide</td></tr>';
+        return;
+      }
 
-            list.innerHTML = inventory.map(item => `
+      list.innerHTML = inventory
+        .map(
+          (item) => `
                 <tr>
                     <td data-label="Expédition" class="font-mono">${item.shipment?.trackingNumber || item.shipmentId.substring(0, 8)}</td>
                     <td data-label="Emplacement"><span class="badge badge-info">${item.location}</span></td>
@@ -281,9 +310,12 @@ export class WarehouseView extends BaseView {
                         <button class="btn btn-sm btn-outline-danger dispatch-btn" data-id="${item.id}">Décharger</button>
                     </td>
                 </tr>
-            `).join('');
-        } catch (err) {
-            list.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--danger)">Erreur</td></tr>';
-        }
+            `,
+        )
+        .join('');
+    } catch (err) {
+      list.innerHTML =
+        '<tr><td colspan="4" style="text-align:center; color:var(--danger)">Erreur</td></tr>';
     }
+  }
 }

@@ -4,17 +4,22 @@ import { api } from './services/api.js';
 
 // Load User Profile on Init if token exists
 async function init() {
+  // Initialize routes first to enable faster navigation
+  initializeRoutes();
+
+  // Load user profile asynchronously to not block initial rendering
   if (state.get('authToken')) {
     try {
       const user = await api.get('/auth/me');
-
       state.set('user', user);
     } catch (e) {
       // Token likely expired
       state.set('authToken', null);
     }
   }
+}
 
+function initializeRoutes() {
   // Define Routes (Lazy Loading)
   router.add('login', () => import('./views/login.view.js').then((m) => m.LoginView));
   router.add('register', () => import('./views/register.view.js').then((m) => m.RegisterView));
@@ -57,9 +62,6 @@ async function init() {
     () => import('./views/reports.view.js').then((m) => m.ReportsView),
     'ADMIN_OR_SECRETARY',
   );
-
-  // Public public tracking (landing)
-  // router.add('home', ...);
 }
 
 init();
