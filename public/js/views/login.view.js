@@ -3,8 +3,8 @@ import { authService } from '../services/auth.service.js';
 import { toast } from '../utils/ui.js';
 
 export class LoginView extends BaseView {
-    async render() {
-        this.root.innerHTML = `
+  async render() {
+    this.root.innerHTML = `
             <div class="centered-layout">
                 <div class="auth-card glass-panel">
                     <div style="text-align:center; margin-bottom:2rem;">
@@ -34,22 +34,32 @@ export class LoginView extends BaseView {
             </div>
         `;
 
-        this.bindEvents();
-    }
+    this.bindEvents();
+  }
 
-    bindEvents() {
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+  bindEvents() {
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const submitBtn = document.querySelector('#login-form button[type="submit"]');
 
-            try {
-                await authService.login(email, password);
-                toast.success('Connexion réussie');
-                window.location.hash = '#dashboard';
-            } catch (err) {
-                toast.error(err.message || 'Échec de la connexion');
-            }
-        });
-    }
+      // Show loading state
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connexion...';
+      submitBtn.disabled = true;
+
+      try {
+        await authService.login(email, password);
+        toast.success('Connexion réussie');
+        window.location.hash = '#dashboard';
+      } catch (err) {
+        toast.error(err.message || 'Échec de la connexion');
+      } finally {
+        // Restore original button state
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    });
+  }
 }

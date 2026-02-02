@@ -6,7 +6,8 @@ export const authService = {
         const res = await api.post('/auth/login', { email, password });
         if (res.accessToken) {
             state.set('authToken', res.accessToken);
-            // Fetch profile immediately
+            // Fetch profile immediately but clear any cached version first
+            api.clearCache('/auth/me');
             const user = await api.get('/auth/me');
             state.set('user', user);
         }
