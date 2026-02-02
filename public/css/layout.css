@@ -16,6 +16,27 @@
     top: 0;
     height: 100vh;
     z-index: 100;
+    overflow-y: auto; /* Enable scrolling for long content */
+}
+
+/* Mobile sidebar */
+@media (max-width: 1024px) {
+    .sidebar {
+        position: fixed;
+        left: -100%;
+        top: 0;
+        height: 100vh;
+        width: 85%;
+        max-width: 320px;
+        z-index: 1000;
+        transition: left 0.3s ease;
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+        overflow-y: auto; /* Enable scrolling on mobile */
+    }
+
+    .sidebar.mobile-open {
+        left: 0;
+    }
 }
 
 .logo-area {

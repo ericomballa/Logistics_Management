@@ -401,6 +401,36 @@ export class ShipmentsView extends BaseView {
     }
   }
 
+  // Helper function to translate status to French
+  getStatusLabel(status) {
+    const statusMap = {
+      'PENDING': 'En attente',
+      'IN_TRANSIT': 'En transit',
+      'OUT_FOR_DELIVERY': 'En cours de livraison',
+      'DELIVERED': 'Livré',
+      'CANCELLED': 'Annulé',
+      'RETURNED': 'Retourné',
+      'PAID': 'Payé',
+      'OVERDUE': 'En retard'
+    };
+    return statusMap[status] || status; // Return original if not found
+  }
+
+  // Helper function to get CSS class for status badge
+  getStatusBadgeClass(status) {
+    const statusClasses = {
+      'PENDING': 'badge-en-attente',
+      'IN_TRANSIT': 'badge-en-transit',
+      'OUT_FOR_DELIVERY': 'badge-en-cours-livraison',
+      'DELIVERED': 'badge-livre',
+      'CANCELLED': 'badge-annule',
+      'RETURNED': 'badge-annule', // Using same as cancelled for return
+      'PAID': 'badge-success', // Using existing class
+      'OVERDUE': 'badge-warning' // Using existing class
+    };
+    return statusClasses[status] || 'badge-info'; // Default to info if not found
+  }
+
   renderShipmentsList(list, tbody) {
     // Check screen size to determine which view to render
     const isMobile = window.innerWidth <= 768;
@@ -419,7 +449,7 @@ export class ShipmentsView extends BaseView {
                         <div class="shipment-card-header">
                             <h3 class="shipment-card-title">
                                 <span class="shipment-tracking">${item.trackingNumber}</span>
-                                <span class="shipment-status"><span class="badge badge-info">${item.status}</span></span>
+                                <span class="shipment-status"><span class="badge ${this.getStatusBadgeClass(item.status)}">${this.getStatusLabel(item.status)}</span></span>
                             </h3>
                         </div>
                         <div class="shipment-card-body">
@@ -460,7 +490,7 @@ export class ShipmentsView extends BaseView {
                         <td data-label="Suivi" style="font-weight:600; font-family:monospace;">${item.trackingNumber}</td>
                         <td data-label="Destinataire">${item.recipientName || item.receiverName}</td>
                         <td data-label="Date">${formatters.date(item.createdAt)}</td>
-                        <td data-label="Statut"><span class="badge badge-info">${item.status}</span></td>
+                        <td data-label="Statut"><span class="badge ${this.getStatusBadgeClass(item.status)}">${this.getStatusLabel(item.status)}</span></td>
                         <td data-label="Actions">
                             <button class="btn-icon view-btn" data-id="${item.id}" title="Voir détails"><i class="fa-solid fa-eye"></i></button>
                             <button class="btn-icon edit-status-btn" data-id="${item.id}" title="Changer statut"><i class="fa-solid fa-rotate"></i></button>
