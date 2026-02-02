@@ -432,9 +432,7 @@ export class ReportsView extends BaseView {
     if (btn) {
       btn.addEventListener('click', async () => {
         // Check if user is admin before allowing access
-        if (
-          !(this.state && (this.state.isAdmin || this.state.get('user')?.role === 'ADMIN'))
-        ) {
+        if (!(this.state && (this.state.isAdmin || this.state.get('user')?.role === 'ADMIN'))) {
           alert('Accès refusé. Seuls les administrateurs peuvent accéder à cette fonctionnalité.');
           return;
         }

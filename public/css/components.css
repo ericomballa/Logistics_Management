@@ -585,6 +585,143 @@ tr:hover td {
     color: var(--info);
 }
 
+/* Specific status colors in French */
+.badge-livre {
+    background: rgba(16, 185, 129, 0.2); /* Green */
+    color: var(--success);
+}
+
+.badge-en-attente {
+    background: rgba(245, 158, 11, 0.2); /* Yellow/Orange */
+    color: var(--warning);
+}
+
+.badge-en-transit {
+    background: rgba(236, 72, 153, 0.2); /* Pink */
+    color: var(--secondary);
+}
+
+.badge-en-cours-livraison {
+    background: rgba(59, 130, 246, 0.2); /* Blue */
+    color: var(--info);
+}
+
+.badge-annule {
+    background: rgba(239, 68, 68, 0.2); /* Red */
+    color: var(--danger);
+}
+
+/* Invoice Cards for Mobile */
+.invoice-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+.invoice-card-header {
+    background: rgba(99, 102, 241, 0.15); /* Light blue background similar to w3-css */
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.invoice-card-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0;
+}
+
+.invoice-number {
+    font-weight: 600;
+    font-family: monospace;
+    color: var(--primary);
+}
+
+.invoice-status {
+    display: inline-block;
+}
+
+.invoice-card-body {
+    padding: 1rem;
+}
+
+.invoice-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.invoice-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.invoice-detail-label {
+    font-weight: 500;
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.invoice-detail-value {
+    flex: 2;
+    text-align: right;
+    color: var(--text-main);
+}
+
+.invoice-card-footer {
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.invoice-actions {
+    display: flex;
+    justify-content: center; /* Center the action buttons */
+    gap: 0.5rem;
+}
+
+/* Mobile invoice view */
+@media (max-width: 768px) {
+    .desktop-table {
+        display: none;
+    }
+
+    #invoices-cards-list {
+        display: block !important;
+    }
+
+    .invoice-card {
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 500px; /* Center the card and limit width */
+    }
+
+    .invoice-actions {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .invoice-actions .btn-icon {
+        margin: 0.25rem;
+    }
+}
+
+/* Desktop view */
+@media (min-width: 769px) {
+    #invoices-cards-list {
+        display: none;
+    }
+
+    .desktop-table {
+        display: table;
+    }
+}
+
 /* Modal */
 .modal-overlay {
     position: fixed;
