@@ -2,17 +2,18 @@ import { state } from '../state.js';
 import { authService } from '../services/auth.service.js';
 
 export class BaseView {
-    constructor(root) {
-        this.root = root;
-    }
+  constructor(root) {
+    this.root = root;
+    this.state = state; // Make state available to child views
+  }
 
-    renderLayout(contentHTML, activeNav = '') {
-        // If not logged in, just return content (e.g. login page)
-        if (!state.isAuthenticated) return contentHTML;
+  renderLayout(contentHTML, activeNav = '') {
+    // If not logged in, just return content (e.g. login page)
+    if (!state.isAuthenticated) return contentHTML;
 
-        const user = state.get('user') || { name: 'User' };
+    const user = state.get('user') || { name: 'User' };
 
-        return `
+    return `
             <div class="layout-grid">
                 <aside class="sidebar">
                     <div class="logo-area" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
@@ -39,7 +40,9 @@ export class BaseView {
                             <i class="fa-solid fa-user-gear"></i> <span>Profil</span>
                         </a>
                         
-                        ${state.isAdmin || state.isSecretary ? `
+                        ${
+                          state.isAdmin || state.isSecretary
+                            ? `
                         <div style="margin-top:1rem; padding-left:1rem; font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:bold;">Admin</div>
                         <a href="#users" class="nav-item ${activeNav === 'users' ? 'active' : ''}">
                             <i class="fa-solid fa-users"></i> <span>Utilisateurs</span>
@@ -53,18 +56,24 @@ export class BaseView {
                         <a href="#warehouses" class="nav-item ${activeNav === 'warehouses' ? 'active' : ''}">
                             <i class="fa-solid fa-warehouse"></i> <span>Entrepôts</span>
                         </a>
-                        ${state.isAdmin ? `
+                        ${
+                          state.isAdmin
+                            ? `
                         <a href="#audit-trail" class="nav-item ${activeNav === 'audit-trail' ? 'active' : ''}">
                             <i class="fa-solid fa-clipboard-list"></i> <span>Journal d'Audit</span>
                         </a>
-                        ` : ''}
+                        `
+                            : ''
+                        }
                         <a href="#billing" class="nav-item ${activeNav === 'billing' ? 'active' : ''}">
                             <i class="fa-solid fa-file-invoice-dollar"></i> <span>Facturation</span>
                         </a>
                         <a href="#reports" class="nav-item ${activeNav === 'reports' ? 'active' : ''}">
                             <i class="fa-solid fa-chart-line"></i> <span>Rapports</span>
                         </a>
-                        ` : ''}
+                        `
+                            : ''
+                        }
                     </nav>
 
                     <div class="user-footer">
@@ -90,29 +99,29 @@ export class BaseView {
                 </main>
             </div>
         `;
+  }
+
+  bindLogout() {
+    // Mobile menu toggle
+    const toggleBtn = document.getElementById('mobile-menu-toggle');
+    const closeBtn = document.getElementById('mobile-menu-close');
+    const sidebar = document.querySelector('.sidebar');
+
+    if (toggleBtn && sidebar) {
+      toggleBtn.addEventListener('click', () => {
+        sidebar.classList.add('mobile-open');
+      });
     }
 
-    bindLogout() {
-        // Mobile menu toggle
-        const toggleBtn = document.getElementById('mobile-menu-toggle');
-        const closeBtn = document.getElementById('mobile-menu-close');
-        const sidebar = document.querySelector('.sidebar');
-
-        if (toggleBtn && sidebar) {
-            toggleBtn.addEventListener('click', () => {
-                sidebar.classList.add('mobile-open');
-            });
-        }
-
-        if (closeBtn && sidebar) {
-            closeBtn.addEventListener('click', () => {
-                sidebar.classList.remove('mobile-open');
-            });
-        }
-
-        const btn = document.getElementById('logout-btn');
-        if (btn) {
-            btn.addEventListener('click', () => authService.logout());
-        }
+    if (closeBtn && sidebar) {
+      closeBtn.addEventListener('click', () => {
+        sidebar.classList.remove('mobile-open');
+      });
     }
+
+    const btn = document.getElementById('logout-btn');
+    if (btn) {
+      btn.addEventListener('click', () => authService.logout());
+    }
+  }
 }

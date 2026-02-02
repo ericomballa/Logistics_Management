@@ -3,13 +3,14 @@ import { reportsService } from '../services/reports.service.js';
 import { renderLoader } from '../utils/ui.js';
 
 export class ReportsView extends BaseView {
-    constructor(root) {
-        super(root);
-        this.charts = {};
-    }
+  constructor(root) {
+    super(root);
+    this.charts = {};
+  }
 
-    async render() {
-        const layout = this.renderLayout(`
+  async render() {
+    const layout = this.renderLayout(
+      `
             <div class="page-header">
                 <div>
                     <h2><i class="fa-solid fa-chart-line"></i> Rapports et Statistiques</h2>
@@ -134,55 +135,64 @@ export class ReportsView extends BaseView {
                     ${renderLoader()}
                 </div>
             </div>
-        `, 'reports');
+        `,
+      'reports',
+    );
+    console.log('ztititititititi');
+    console.log(this.state);
 
-        this.root.innerHTML = layout;
-        this.bindLogout();
+    this.root.innerHTML = layout;
+    this.bindLogout();
 
-        // Load data based on user role
-        if (window.state && (window.state.isAdmin || window.state.get('user')?.role === 'ADMIN')) {
-            // Admins can see all reports
-            await this.loadDashboardStats();
-            await this.loadShipmentsByStatus();
-            await this.loadShipmentsByOrigin();
-            await this.loadAverageDeliveryTime();
+    // Load data based on user role
+    if (
+      this.state &&
+      (this.state.isAdmin ||
+        this.state.get('user')?.role === 'ADMIN' ||
+        this.state.get('user')?.role === 'SUPER_ADMIN')
+    ) {
+      // Admins can see all reports
+      await this.loadDashboardStats();
+      await this.loadShipmentsByStatus();
+      await this.loadShipmentsByOrigin();
+      await this.loadAverageDeliveryTime();
 
-            // Show admin-only sections
-            document.getElementById('dashboard-stats-section').style.display = 'block';
-            document.getElementById('charts-section').style.display = 'grid';
-            document.getElementById('revenue-report-section').style.display = 'block';
-            document.getElementById('delivery-time-section').style.display = 'block';
-        } else {
-            // Hide admin-only sections for secretaries
-            const dashboardSection = document.getElementById('dashboard-stats-section');
-            const chartsSection = document.getElementById('charts-section');
-            const revenueReportSection = document.getElementById('revenue-report-section');
-            const deliveryTimeSection = document.getElementById('delivery-time-section');
+      // Show admin-only sections
+      document.getElementById('dashboard-stats-section').style.display = 'block';
+      document.getElementById('charts-section').style.display = 'grid';
+      document.getElementById('revenue-report-section').style.display = 'block';
+      document.getElementById('delivery-time-section').style.display = 'block';
+    } else {
+      // Hide admin-only sections for secretaries
+      const dashboardSection = document.getElementById('dashboard-stats-section');
+      const chartsSection = document.getElementById('charts-section');
+      const revenueReportSection = document.getElementById('revenue-report-section');
+      const deliveryTimeSection = document.getElementById('delivery-time-section');
 
-            if (dashboardSection) dashboardSection.style.display = 'none';
-            if (chartsSection) chartsSection.style.display = 'none';
-            if (revenueReportSection) revenueReportSection.style.display = 'none';
-            if (deliveryTimeSection) deliveryTimeSection.style.display = 'none';
-        }
-
-        // Both admins and secretaries can see daily reports
-        // Bind daily revenue report button (available to both roles)
-        this.bindDailyRevenueReport();
-        this.setTodayAsDefaultDailyRevenueDate();
-
-        // Bind revenue report button (only for admins)
-        if (window.state && (window.state.isAdmin || window.state.get('user')?.role === 'ADMIN')) {
-            this.bindRevenueReport();
-            this.setDefaultDates();
-        }
+      if (dashboardSection) dashboardSection.style.display = 'none';
+      if (chartsSection) chartsSection.style.display = 'none';
+      if (revenueReportSection) revenueReportSection.style.display = 'none';
+      if (deliveryTimeSection) deliveryTimeSection.style.display = 'none';
     }
 
-    async loadDashboardStats() {
-        try {
-            const stats = await reportsService.getDashboardStats();
-            const container = document.getElementById('dashboard-stats');
+    // Both admins and secretaries can see daily reports
+    // Bind daily revenue report button (available to both roles)
+    this.bindDailyRevenueReport();
+    this.setTodayAsDefaultDailyRevenueDate();
 
-            container.innerHTML = `
+    // Bind revenue report button (only for admins)
+    if (this.state && (this.state.isAdmin || this.state.get('user')?.role === 'ADMIN')) {
+      this.bindRevenueReport();
+      this.setDefaultDates();
+    }
+  }
+
+  async loadDashboardStats() {
+    try {
+      const stats = await reportsService.getDashboardStats();
+      const container = document.getElementById('dashboard-stats');
+
+      container.innerHTML = `
                 <div class="glass-panel" style="display:flex; align-items:center; gap:1rem;">
                     <div style="background:rgba(99,102,241,0.2); width:60px; height:60px; display:flex; align-items:center; justify-content:center; border-radius:12px; color:var(--primary); font-size:1.8rem;">
                         <i class="fa-solid fa-box"></i>
@@ -243,149 +253,158 @@ export class ReportsView extends BaseView {
                     </div>
                 </div>
             `;
-        } catch (err) {
-            console.error('Error loading dashboard stats:', err);
-            document.getElementById('dashboard-stats').innerHTML = '<p class="text-center" style="color:var(--error);">Erreur de chargement des statistiques</p>';
-        }
+    } catch (err) {
+      console.error('Error loading dashboard stats:', err);
+      document.getElementById('dashboard-stats').innerHTML =
+        '<p class="text-center" style="color:var(--error);">Erreur de chargement des statistiques</p>';
     }
+  }
 
-    async loadShipmentsByStatus() {
-        try {
-            // Wait for Chart.js to be available
-            await this.waitForChart();
+  async loadShipmentsByStatus() {
+    try {
+      // Wait for Chart.js to be available
+      console.log('await for chartjs');
 
-            const data = await reportsService.getShipmentsByStatus();
-            const container = document.getElementById('status-chart-container');
+      await this.waitForChart();
 
-            // Create canvas
-            container.innerHTML = '<canvas id="status-chart"></canvas>';
-            const canvas = document.getElementById('status-chart');
+      const data = await reportsService.getShipmentsByStatus();
+      const container = document.getElementById('status-chart-container');
 
-            // Status labels in French
-            const statusLabels = {
-                'PENDING': 'En Attente',
-                'IN_TRANSIT': 'En Transit',
-                'DELIVERED': 'Livrée',
-                'CANCELLED': 'Annulée',
-                'RETURNED': 'Retournée'
-            };
+      // Create canvas
+      container.innerHTML = '<canvas id="status-chart"></canvas>';
+      const canvas = document.getElementById('status-chart');
 
-            const labels = data.map(item => statusLabels[item.status] || item.status);
-            const values = data.map(item => item.count);
+      // Status labels in French
+      const statusLabels = {
+        PENDING: 'En Attente',
+        IN_TRANSIT: 'En Transit',
+        DELIVERED: 'Livrée',
+        CANCELLED: 'Annulée',
+        RETURNED: 'Retournée',
+      };
 
-            // Colors for different statuses
-            const colors = [
-                'rgba(245, 158, 11, 0.8)',  // Warning - Pending
-                'rgba(236, 72, 153, 0.8)',  // Secondary - In Transit
-                'rgba(16, 185, 129, 0.8)',  // Success - Delivered
-                'rgba(239, 68, 68, 0.8)',   // Error - Cancelled
-                'rgba(107, 114, 128, 0.8)'  // Gray - Returned
-            ];
+      const labels = data.map((item) => statusLabels[item.status] || item.status);
+      const values = data.map((item) => item.count);
 
-            this.charts.statusChart = new Chart(canvas, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: colors,
-                        borderWidth: 2,
-                        borderColor: 'rgba(255, 255, 255, 0.1)'
-                    }]
+      // Colors for different statuses
+      const colors = [
+        'rgba(245, 158, 11, 0.8)', // Warning - Pending
+        'rgba(236, 72, 153, 0.8)', // Secondary - In Transit
+        'rgba(16, 185, 129, 0.8)', // Success - Delivered
+        'rgba(239, 68, 68, 0.8)', // Error - Cancelled
+        'rgba(107, 114, 128, 0.8)', // Gray - Returned
+      ];
+
+      this.charts.statusChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              data: values,
+              backgroundColor: colors,
+              borderWidth: 2,
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#e5e7eb',
+                padding: 15,
+                font: {
+                  size: 12,
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: '#e5e7eb',
-                                padding: 15,
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        } catch (err) {
-            console.error('Error loading shipments by status:', err);
-            document.getElementById('status-chart-container').innerHTML = '<p class="text-center" style="color:var(--error);">Erreur de chargement</p>';
-        }
+              },
+            },
+          },
+        },
+      });
+    } catch (err) {
+      console.error('Error loading shipments by status:', err);
+      document.getElementById('status-chart-container').innerHTML =
+        '<p class="text-center" style="color:var(--error);">Erreur de chargement</p>';
     }
+  }
 
-    async loadShipmentsByOrigin() {
-        try {
-            // Wait for Chart.js to be available
-            await this.waitForChart();
+  async loadShipmentsByOrigin() {
+    try {
+      // Wait for Chart.js to be available
+      await this.waitForChart();
 
-            const data = await reportsService.getShipmentsByOrigin();
-            const container = document.getElementById('origin-chart-container');
+      const data = await reportsService.getShipmentsByOrigin();
+      const container = document.getElementById('origin-chart-container');
 
-            // Create canvas
-            container.innerHTML = '<canvas id="origin-chart"></canvas>';
-            const canvas = document.getElementById('origin-chart');
+      // Create canvas
+      container.innerHTML = '<canvas id="origin-chart"></canvas>';
+      const canvas = document.getElementById('origin-chart');
 
-            const labels = data.map(item => item.origin || 'Non spécifié');
-            const values = data.map(item => item.count);
+      const labels = data.map((item) => item.origin || 'Non spécifié');
+      const values = data.map((item) => item.count);
 
-            this.charts.originChart = new Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Nombre d\'expéditions',
-                        data: values,
-                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
-                        borderColor: 'rgba(99, 102, 241, 1)',
-                        borderWidth: 2,
-                        borderRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                color: '#e5e7eb',
-                                stepSize: 1
-                            },
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                color: '#e5e7eb'
-                            },
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-        } catch (err) {
-            console.error('Error loading shipments by origin:', err);
-            document.getElementById('origin-chart-container').innerHTML = '<p class="text-center" style="color:var(--error);">Erreur de chargement</p>';
-        }
+      this.charts.originChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Nombre d'expéditions",
+              data: values,
+              backgroundColor: 'rgba(99, 102, 241, 0.8)',
+              borderColor: 'rgba(99, 102, 241, 1)',
+              borderWidth: 2,
+              borderRadius: 8,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false,
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: '#e5e7eb',
+                stepSize: 1,
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)',
+              },
+            },
+            x: {
+              ticks: {
+                color: '#e5e7eb',
+              },
+              grid: {
+                display: false,
+              },
+            },
+          },
+        },
+      });
+    } catch (err) {
+      console.error('Error loading shipments by origin:', err);
+      document.getElementById('origin-chart-container').innerHTML =
+        '<p class="text-center" style="color:var(--error);">Erreur de chargement</p>';
     }
+  }
 
-    async loadAverageDeliveryTime() {
-        try {
-            const data = await reportsService.getAverageDeliveryTime();
-            const container = document.getElementById('delivery-time-container');
+  async loadAverageDeliveryTime() {
+    try {
+      const data = await reportsService.getAverageDeliveryTime();
+      const container = document.getElementById('delivery-time-container');
 
-            container.innerHTML = `
+      container.innerHTML = `
                 <div style="display:flex; align-items:center; gap:2rem; flex-wrap:wrap;">
                     <div style="flex:1; min-width:200px; text-align:center; padding:2rem; background:rgba(99,102,241,0.1); border-radius:12px; border:2px solid rgba(99,102,241,0.3);">
                         <div style="font-size:3rem; font-weight:800; color:var(--primary); margin-bottom:0.5rem;">
@@ -401,114 +420,129 @@ export class ReportsView extends BaseView {
                     </div>
                 </div>
             `;
+    } catch (err) {
+      console.error('Error loading average delivery time:', err);
+      document.getElementById('delivery-time-container').innerHTML =
+        '<p class="text-center" style="color:var(--error);">Erreur de chargement</p>';
+    }
+  }
+
+  bindRevenueReport() {
+    const btn = document.getElementById('load-revenue-btn');
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        // Check if user is admin before allowing access
+        if (!(this.state && (this.state.isAdmin || this.state.get('user')?.role === 'ADMIN'))) {
+          alert('Accès refusé. Seuls les administrateurs peuvent accéder à cette fonctionnalité.');
+          return;
+        }
+
+        const startDate = document.getElementById('revenue-start-date').value;
+        const endDate = document.getElementById('revenue-end-date').value;
+
+        if (!startDate || !endDate) {
+          alert('Veuillez sélectionner les deux dates');
+          return;
+        }
+
+        try {
+          btn.disabled = true;
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Chargement...';
+
+          const data = await reportsService.getRevenue(startDate, endDate);
+
+          document.getElementById('revenue-total-invoices').textContent = data.totalInvoices || 0;
+          document.getElementById('revenue-total-amount').textContent = this.formatCurrency(
+            data.totalAmount || 0,
+          );
+          document.getElementById('revenue-paid-amount').textContent = this.formatCurrency(
+            data.paidAmount || 0,
+          );
+          document.getElementById('revenue-pending-amount').textContent = this.formatCurrency(
+            data.pendingAmount || 0,
+          );
+
+          document.getElementById('revenue-data').style.display = 'block';
         } catch (err) {
-            console.error('Error loading average delivery time:', err);
-            document.getElementById('delivery-time-container').innerHTML = '<p class="text-center" style="color:var(--error);">Erreur de chargement</p>';
+          console.error('Error loading revenue:', err);
+          alert('Erreur lors du chargement du rapport de revenus');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-search"></i> Charger';
         }
+      });
+    }
+  }
+
+  bindDailyRevenueReport() {
+    const btn = document.getElementById('load-daily-revenue-btn');
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        const date = document.getElementById('daily-revenue-date').value;
+
+        if (!date) {
+          alert('Veuillez sélectionner une date');
+          return;
+        }
+
+        try {
+          btn.disabled = true;
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Chargement...';
+
+          const data = await reportsService.getDailyRevenue(date);
+
+          document.getElementById('daily-revenue-total-invoices').textContent =
+            data.totalInvoices || 0;
+          document.getElementById('daily-revenue-total-amount').textContent = this.formatCurrency(
+            data.totalAmount || 0,
+          );
+          document.getElementById('daily-revenue-paid-amount').textContent = this.formatCurrency(
+            data.paidAmount || 0,
+          );
+          document.getElementById('daily-revenue-pending-amount').textContent = this.formatCurrency(
+            data.pendingAmount || 0,
+          );
+
+          // Populate revenue by status
+          this.populateDailyRevenueByStatus(data.byStatus);
+
+          document.getElementById('daily-revenue-data').style.display = 'block';
+        } catch (err) {
+          console.error('Error loading daily revenue:', err);
+          alert('Erreur lors du chargement du rapport de revenus journaliers');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-search"></i> Charger';
+        }
+      });
+    }
+  }
+
+  populateDailyRevenueByStatus(byStatusData) {
+    const container = document.getElementById('daily-revenue-by-status');
+    if (!byStatusData || byStatusData.length === 0) {
+      container.innerHTML = '<p>Aucune donnée disponible</p>';
+      return;
     }
 
-    bindRevenueReport() {
-        const btn = document.getElementById('load-revenue-btn');
-        if (btn) {
-            btn.addEventListener('click', async () => {
-                // Check if user is admin before allowing access
-                if (!(window.state && (window.state.isAdmin || window.state.get('user')?.role === 'ADMIN'))) {
-                    alert('Accès refusé. Seuls les administrateurs peuvent accéder à cette fonctionnalité.');
-                    return;
-                }
+    // Status labels in French
+    const statusLabels = {
+      PENDING: 'En Attente',
+      PARTIAL: 'Partiel',
+      PAID: 'Payé',
+      CANCELLED: 'Annulé',
+      OVERDUE: 'En Retard',
+    };
 
-                const startDate = document.getElementById('revenue-start-date').value;
-                const endDate = document.getElementById('revenue-end-date').value;
+    container.innerHTML = byStatusData
+      .map((item) => {
+        // Determine color based on status
+        let colorClass = 'primary';
+        if (item.status === 'PAID') colorClass = 'success';
+        else if (item.status === 'PENDING' || item.status === 'PARTIAL') colorClass = 'warning';
+        else if (item.status === 'CANCELLED') colorClass = 'danger';
 
-                if (!startDate || !endDate) {
-                    alert('Veuillez sélectionner les deux dates');
-                    return;
-                }
-
-                try {
-                    btn.disabled = true;
-                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Chargement...';
-
-                    const data = await reportsService.getRevenue(startDate, endDate);
-
-                    document.getElementById('revenue-total-invoices').textContent = data.totalInvoices || 0;
-                    document.getElementById('revenue-total-amount').textContent = this.formatCurrency(data.totalAmount || 0);
-                    document.getElementById('revenue-paid-amount').textContent = this.formatCurrency(data.paidAmount || 0);
-                    document.getElementById('revenue-pending-amount').textContent = this.formatCurrency(data.pendingAmount || 0);
-
-                    document.getElementById('revenue-data').style.display = 'block';
-                } catch (err) {
-                    console.error('Error loading revenue:', err);
-                    alert('Erreur lors du chargement du rapport de revenus');
-                } finally {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fa-solid fa-search"></i> Charger';
-                }
-            });
-        }
-    }
-
-    bindDailyRevenueReport() {
-        const btn = document.getElementById('load-daily-revenue-btn');
-        if (btn) {
-            btn.addEventListener('click', async () => {
-                const date = document.getElementById('daily-revenue-date').value;
-
-                if (!date) {
-                    alert('Veuillez sélectionner une date');
-                    return;
-                }
-
-                try {
-                    btn.disabled = true;
-                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Chargement...';
-
-                    const data = await reportsService.getDailyRevenue(date);
-
-                    document.getElementById('daily-revenue-total-invoices').textContent = data.totalInvoices || 0;
-                    document.getElementById('daily-revenue-total-amount').textContent = this.formatCurrency(data.totalAmount || 0);
-                    document.getElementById('daily-revenue-paid-amount').textContent = this.formatCurrency(data.paidAmount || 0);
-                    document.getElementById('daily-revenue-pending-amount').textContent = this.formatCurrency(data.pendingAmount || 0);
-
-                    // Populate revenue by status
-                    this.populateDailyRevenueByStatus(data.byStatus);
-
-                    document.getElementById('daily-revenue-data').style.display = 'block';
-                } catch (err) {
-                    console.error('Error loading daily revenue:', err);
-                    alert('Erreur lors du chargement du rapport de revenus journaliers');
-                } finally {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fa-solid fa-search"></i> Charger';
-                }
-            });
-        }
-    }
-
-    populateDailyRevenueByStatus(byStatusData) {
-        const container = document.getElementById('daily-revenue-by-status');
-        if (!byStatusData || byStatusData.length === 0) {
-            container.innerHTML = '<p>Aucune donnée disponible</p>';
-            return;
-        }
-
-        // Status labels in French
-        const statusLabels = {
-            'PENDING': 'En Attente',
-            'PARTIAL': 'Partiel',
-            'PAID': 'Payé',
-            'CANCELLED': 'Annulé',
-            'OVERDUE': 'En Retard'
-        };
-
-        container.innerHTML = byStatusData.map(item => {
-            // Determine color based on status
-            let colorClass = 'primary';
-            if (item.status === 'PAID') colorClass = 'success';
-            else if (item.status === 'PENDING' || item.status === 'PARTIAL') colorClass = 'warning';
-            else if (item.status === 'CANCELLED') colorClass = 'danger';
-
-            return `
+        return `
                 <div class="glass-panel" style="padding:1rem; border-left:4px solid var(--${colorClass});">
                     <div style="font-weight:600; color:var(--${colorClass}); margin-bottom:0.5rem;">${statusLabels[item.status] || item.status}</div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
@@ -525,53 +559,54 @@ export class ReportsView extends BaseView {
                     </div>
                 </div>
             `;
-        }).join('');
-    }
+      })
+      .join('');
+  }
 
-    setTodayAsDefaultDailyRevenueDate() {
-        const today = new Date().toISOString().split('T')[0];
-        const dateInput = document.getElementById('daily-revenue-date');
-        if (dateInput) dateInput.value = today;
-    }
+  setTodayAsDefaultDailyRevenueDate() {
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('daily-revenue-date');
+    if (dateInput) dateInput.value = today;
+  }
 
-    setDefaultDates() {
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 30);
+  setDefaultDates() {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
 
-        const endInput = document.getElementById('revenue-end-date');
-        const startInput = document.getElementById('revenue-start-date');
+    const endInput = document.getElementById('revenue-end-date');
+    const startInput = document.getElementById('revenue-start-date');
 
-        if (endInput) endInput.value = endDate.toISOString().split('T')[0];
-        if (startInput) startInput.value = startDate.toISOString().split('T')[0];
-    }
+    if (endInput) endInput.value = endDate.toISOString().split('T')[0];
+    if (startInput) startInput.value = startDate.toISOString().split('T')[0];
+  }
 
-    formatCurrency(amount) {
-        return new Intl.NumberFormat('fr-FR', {
-            style: 'currency',
-            currency: 'XAF'
-        }).format(amount);
-    }
+  formatCurrency(amount) {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'XAF',
+    }).format(amount);
+  }
 
-    async waitForChart() {
-        // Wait for Chart.js to be available
-        return new Promise((resolve) => {
-            if (typeof Chart !== 'undefined') {
-                resolve();
-            } else {
-                const checkChart = setInterval(() => {
-                    if (typeof Chart !== 'undefined') {
-                        clearInterval(checkChart);
-                        resolve();
-                    }
-                }, 100);
+  async waitForChart() {
+    // Wait for Chart.js to be available
+    return new Promise((resolve) => {
+      if (typeof Chart !== 'undefined') {
+        resolve();
+      } else {
+        const checkChart = setInterval(() => {
+          if (typeof Chart !== 'undefined') {
+            clearInterval(checkChart);
+            resolve();
+          }
+        }, 100);
 
-                // Timeout after 5 seconds
-                setTimeout(() => {
-                    clearInterval(checkChart);
-                    resolve();
-                }, 5000);
-            }
-        });
-    }
+        // Timeout after 5 seconds
+        setTimeout(() => {
+          clearInterval(checkChart);
+          resolve();
+        }, 5000);
+      }
+    });
+  }
 }
