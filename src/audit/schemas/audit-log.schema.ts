@@ -38,3 +38,12 @@ export const AuditLogSchema = SchemaFactory.createForClass(AuditLog);
 AuditLogSchema.index({ action: 1, entityType: 1, timestamp: -1 });
 AuditLogSchema.index({ entityType: 1, entityId: 1 });
 AuditLogSchema.index({ timestamp: -1 });
+
+// Getter pour id (compatible avec l'ancien code TypeORM)
+AuditLogSchema.virtual('id').get(function() {
+  return this._id.toString();
+});
+
+// Inclure les virtuals dans la sérialisation JSON
+AuditLogSchema.set('toJSON', { virtuals: true });
+AuditLogSchema.set('toObject', { virtuals: true });

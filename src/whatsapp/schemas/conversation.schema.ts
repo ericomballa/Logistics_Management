@@ -37,3 +37,12 @@ ConversationSchema.virtual('user', {
   foreignField: '_id',
   justOne: true,
 });
+
+// Getter pour id (compatible avec l'ancien code TypeORM)
+ConversationSchema.virtual('id').get(function() {
+  return this._id.toString();
+});
+
+// Inclure les virtuals dans la sérialisation JSON
+ConversationSchema.set('toJSON', { virtuals: true });
+ConversationSchema.set('toObject', { virtuals: true });

@@ -50,3 +50,12 @@ WarehouseInventorySchema.virtual('warehouse', {
   foreignField: '_id',
   justOne: true,
 });
+
+// Getter pour id (compatible avec l'ancien code TypeORM)
+WarehouseInventorySchema.virtual('id').get(function() {
+  return this._id.toString();
+});
+
+// Inclure les virtuals dans la sérialisation JSON
+WarehouseInventorySchema.set('toJSON', { virtuals: true });
+WarehouseInventorySchema.set('toObject', { virtuals: true });

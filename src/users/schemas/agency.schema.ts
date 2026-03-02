@@ -52,3 +52,12 @@ export const AgencySchema = SchemaFactory.createForClass(Agency);
 // Indexes
 AgencySchema.index({ code: 1 });
 AgencySchema.index({ isActive: 1 });
+
+// Getter pour id (compatible avec l'ancien code TypeORM)
+AgencySchema.virtual('id').get(function() {
+  return this._id.toString();
+});
+
+// Inclure les virtuals dans la sérialisation JSON
+AgencySchema.set('toJSON', { virtuals: true });
+AgencySchema.set('toObject', { virtuals: true });

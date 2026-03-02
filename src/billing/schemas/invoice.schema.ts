@@ -79,3 +79,12 @@ InvoiceSchema.virtual('payments', {
   localField: '_id',
   foreignField: 'invoiceId',
 });
+
+// Getter pour id (compatible avec l'ancien code TypeORM)
+InvoiceSchema.virtual('id').get(function() {
+  return this._id.toString();
+});
+
+// Inclure les virtuals dans la sérialisation JSON
+InvoiceSchema.set('toJSON', { virtuals: true });
+InvoiceSchema.set('toObject', { virtuals: true });

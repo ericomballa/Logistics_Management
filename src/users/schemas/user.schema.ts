@@ -56,7 +56,7 @@ UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ isActive: 1 });
 
-// Virtual pour la relation agency
+// Virtual pour le relation agency
 UserSchema.virtual('agency', {
   ref: 'Agency',
   localField: 'agencyId',
@@ -70,3 +70,12 @@ UserSchema.virtual('rolesData', {
   localField: 'roles',
   foreignField: '_id',
 });
+
+// Getter pour id (compatible avec l'ancien code TypeORM)
+UserSchema.virtual('id').get(function() {
+  return this._id.toString();
+});
+
+// Inclure les virtuals dans la sérialisation JSON
+UserSchema.set('toJSON', { virtuals: true });
+UserSchema.set('toObject', { virtuals: true });

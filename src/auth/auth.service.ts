@@ -25,25 +25,33 @@ export class AuthService {
       throw new UnauthorizedException('Account is deactivated');
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    // Convertir le document Mongoose en objet simple
+    const userObj = user.toObject ? user.toObject() : user;
+
+    const isPasswordValid = await bcrypt.compare(password, userObj.password);
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...result } = user;
+    const { password: _, ...result } = userObj;
     return result;
   }
 
   async login(loginDto: LoginDto) {
     const user = await this.validateUser(loginDto.email, loginDto.password);
 
+    // S'assurer qu'on a un objet simple avec des propriétés énumérables
+    const userObj = user.toObject ? user.toObject() : JSON.parse(JSON.stringify(user));
+
+    const userId = userObj.id || (userObj._id ? userObj._id.toString() : null);
+
     const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      agencyId: user.agencyId,
+      sub: userId,
+      email: userObj.email,
+      role: userObj.role,
+      agencyId: userObj.agencyId,
     };
 
     const accessToken = this.jwtService.sign(payload);
@@ -54,11 +62,11 @@ export class AuthService {
 
     return {
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        agencyId: user.agencyId,
+        id: userId,
+        email: userObj.email,
+        name: userObj.name,
+        role: userObj.role,
+        agencyId: userObj.agencyId,
       },
       accessToken,
       refreshToken,

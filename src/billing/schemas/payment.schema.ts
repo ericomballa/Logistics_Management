@@ -52,3 +52,12 @@ PaymentSchema.virtual('processedBy', {
   foreignField: '_id',
   justOne: true,
 });
+
+// Getter pour id (compatible avec l'ancien code TypeORM)
+PaymentSchema.virtual('id').get(function() {
+  return this._id.toString();
+});
+
+// Inclure les virtuals dans la sérialisation JSON
+PaymentSchema.set('toJSON', { virtuals: true });
+PaymentSchema.set('toObject', { virtuals: true });

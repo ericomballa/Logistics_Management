@@ -28,3 +28,12 @@ WhatsappUserSchema.virtual('conversations', {
   localField: '_id',
   foreignField: 'userId',
 });
+
+// Getter pour id (compatible avec l'ancien code TypeORM)
+WhatsappUserSchema.virtual('id').get(function() {
+  return this._id.toString();
+});
+
+// Inclure les virtuals dans la sérialisation JSON
+WhatsappUserSchema.set('toJSON', { virtuals: true });
+WhatsappUserSchema.set('toObject', { virtuals: true });

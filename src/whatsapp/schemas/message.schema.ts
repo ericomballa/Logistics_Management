@@ -31,3 +31,12 @@ MessageSchema.virtual('conversation', {
   foreignField: '_id',
   justOne: true,
 });
+
+// Getter pour id (compatible avec l'ancien code TypeORM)
+MessageSchema.virtual('id').get(function() {
+  return this._id.toString();
+});
+
+// Inclure les virtuals dans la sérialisation JSON
+MessageSchema.set('toJSON', { virtuals: true });
+MessageSchema.set('toObject', { virtuals: true });

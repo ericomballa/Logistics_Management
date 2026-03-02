@@ -137,3 +137,12 @@ ShipmentSchema.virtual('createdBy', {
   foreignField: '_id',
   justOne: true,
 });
+
+// Getter pour id (compatible avec l'ancien code TypeORM)
+ShipmentSchema.virtual('id').get(function() {
+  return this._id.toString();
+});
+
+// Inclure les virtuals dans la sérialisation JSON
+ShipmentSchema.set('toJSON', { virtuals: true });
+ShipmentSchema.set('toObject', { virtuals: true });

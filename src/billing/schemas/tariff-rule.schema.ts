@@ -33,3 +33,12 @@ export const TariffRuleSchema = SchemaFactory.createForClass(TariffRule);
 // Indexes
 TariffRuleSchema.index({ origin: 1, destination: 1 });
 TariffRuleSchema.index({ isActive: 1 });
+
+// Getter pour id (compatible avec l'ancien code TypeORM)
+TariffRuleSchema.virtual('id').get(function() {
+  return this._id.toString();
+});
+
+// Inclure les virtuals dans la sérialisation JSON
+TariffRuleSchema.set('toJSON', { virtuals: true });
+TariffRuleSchema.set('toObject', { virtuals: true });
