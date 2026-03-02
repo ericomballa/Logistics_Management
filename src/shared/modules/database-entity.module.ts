@@ -1,10 +1,20 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from '../../users/entities/user.entity';
-import { Role } from '../../users/entities/role.entity';
+import { MongooseModule } from '@nestjs/mongoose';
+import { User, UserSchema } from '../../users/schemas/user.schema';
+import { Role, RoleSchema } from '../../users/schemas/role.schema';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Role])],
-  exports: [TypeOrmModule.forFeature([User, Role])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: Role.name, schema: RoleSchema },
+    ]),
+  ],
+  exports: [
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: Role.name, schema: RoleSchema },
+    ]),
+  ],
 })
 export class DatabaseEntityModule {}

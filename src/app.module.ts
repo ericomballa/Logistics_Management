@@ -1,3 +1,6 @@
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ShipmentsModule } from './shipments/shipments.module';
@@ -7,62 +10,54 @@ import { BillingModule } from './billing/billing.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
 import { HealthModule } from './health/health.module';
-
-// @Module({
-//   imports: [
-//     AuthModule,
-//     UsersModule,
-//     ShipmentsModule,
-//     TrackingModule,
-//     WarehouseModule,
-//     BillingModule,
-//     NotificationsModule,
-//     ReportsModule,
-//     HealthModule,
-//   ],
-//   controllers: [AppController],
-//   providers: [AppService],
-// })
-// export class AppModule {}
-
-// app.module.ts
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './users/entities/user.entity';
-import { Agency } from './users/entities/agency.entity';
-import { Role } from './users/entities/role.entity';
-import { MongooseModule } from '@nestjs/mongoose';
-import { ConfigModule } from '@nestjs/config';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
-import { WhatsappUser } from './whatsapp/entities/whatsapp-user.entity';
-import { Conversation } from './whatsapp/entities/conversation.entity';
-import { Message } from './whatsapp/entities/message.entity';
 import { SeedModule } from './shared/modules/seed.module';
+import { AuditModule } from './audit/audit.module';
+
+// Import des schémas Mongoose
+import { User, UserSchema } from './users/schemas/user.schema';
+import { Agency, AgencySchema } from './users/schemas/agency.schema';
+import { Role, RoleSchema } from './users/schemas/role.schema';
+import { Shipment, ShipmentSchema } from './shipments/schemas/shipment.schema';
+import { Invoice, InvoiceSchema } from './billing/schemas/invoice.schema';
+import { Payment, PaymentSchema } from './billing/schemas/payment.schema';
+import { Tariff, TariffSchema } from './billing/schemas/tariff.schema';
+import { TariffRule, TariffRuleSchema } from './billing/schemas/tariff-rule.schema';
+import { Warehouse, WarehouseSchema } from './warehouse/schemas/warehouse.schema';
+import { WarehouseInventory, WarehouseInventorySchema } from './warehouse/schemas/warehouse-inventory.schema';
+import { WhatsappUser, WhatsappUserSchema } from './whatsapp/schemas/whatsapp-user.schema';
+import { Conversation, ConversationSchema } from './whatsapp/schemas/conversation.schema';
+import { Message, MessageSchema } from './whatsapp/schemas/message.schema';
+import { AuditLog, AuditLogSchema } from './audit/schemas/audit-log.schema';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      // host: process.env.DB_HOST || 'localhost',
-      port: 5432,
-      username: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres',
-      database: process.env.DB_NAME || 'logistics',
-      url: process.env.DATABASE_URL,
-      entities: [User, Agency, Role, WhatsappUser, Conversation, Message],
-      synchronize: true, // ❗ false en prod
-      ssl: {
-        rejectUnauthorized: false,
-      },
-      autoLoadEntities: true, // ⭐ recommandé
-    }),
-
     ConfigModule.forRoot({
-      isGlobal: true, // ⭐⭐ CRUCIAL
+      isGlobal: true,
     }),
 
-    // ✅ MongoDB (TRACKING)
-    MongooseModule.forRoot(process.env.MONGODB_URI),
+    // ✅ MongoDB - Base de données unique
+    MongooseModule.forRoot(process.env.MONGODB_URI, {
+      dbName: process.env.MONGODB_DB_NAME || 'logistics_db',
+    }),
+
+    // Enregistrement des schémas globaux
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: Agency.name, schema: AgencySchema },
+      { name: Role.name, schema: RoleSchema },
+      { name: Shipment.name, schema: ShipmentSchema },
+      { name: Invoice.name, schema: InvoiceSchema },
+      { name: Payment.name, schema: PaymentSchema },
+      { name: Tariff.name, schema: TariffSchema },
+      { name: TariffRule.name, schema: TariffRuleSchema },
+      { name: Warehouse.name, schema: WarehouseSchema },
+      { name: WarehouseInventory.name, schema: WarehouseInventorySchema },
+      { name: WhatsappUser.name, schema: WhatsappUserSchema },
+      { name: Conversation.name, schema: ConversationSchema },
+      { name: Message.name, schema: MessageSchema },
+      { name: AuditLog.name, schema: AuditLogSchema },
+    ]),
 
     AuthModule,
     UsersModule,
@@ -74,7 +69,8 @@ import { SeedModule } from './shared/modules/seed.module';
     ReportsModule,
     HealthModule,
     WhatsappModule,
-    SeedModule, // Ajouter le module de seeding
+    SeedModule,
+    AuditModule,
   ],
 })
 export class AppModule { }

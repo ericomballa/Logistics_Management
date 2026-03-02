@@ -845,3 +845,42 @@ tr:hover td {
 .toast-error {
     border-left: 4px solid var(--danger);
 }
+
+/* Payment Summary and History */
+.payment-summary {
+    border: 1px solid #eee;
+    padding: 15px;
+    margin-top: 20px;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+}
+.summary-item.total {
+    font-weight: bold;
+    font-size: 1.2em;
+    border-top: 2px solid #333;
+    padding-top: 10px;
+}
+.payment-history table {
+    margin-top: 15px;
+}
+.status-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    color: white;
+}
+.status-paid {
+    background-color: #28a745;
+}
+.status-partial {
+    background-color: #ffc107;
+    color: black;
+}
+.status-pending {
+    background-color: #dc3545;
+}

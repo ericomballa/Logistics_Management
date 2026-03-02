@@ -1,32 +1,36 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { Repository, Between, LessThan, MoreThan } from 'typeorm';
-import { Invoice } from './entities/invoice.entity';
-import { Payment } from './entities/payment.entity';
-import { TariffRule } from './entities/tariff-rule.entity';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { Invoice } from './schemas/invoice.schema';
+import { Payment } from './schemas/payment.schema';
+import { TariffRule } from './schemas/tariff-rule.schema';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateTariffRuleDto } from './dto/create-tariff-rule.dto';
 import { UpdateTariffRuleDto } from './dto/update-tariff-rule.dto';
 import { QueryInvoicesDto } from './dto/query-invoices.dto';
-import { PaymentStatus } from './enums/payment-status.enum';
+import { PaymentStatus as BillingPaymentStatus } from './enums/payment-status.enum';
+import { PaymentStatus as DtoPaymentStatus } from './dto/create-payment.dto';
+import { AuditService } from '../audit/audit.service';
+import { AuditActionType } from '../audit/enums/audit-action-type.enum';
+import { Tariff } from './schemas/tariff.schema';
+import { CreateTariffDto } from './dto/create-tariff.dto';
+import { UpdateTariffDto } from './dto/update-tariff.dto';
 
 @Injectable()
 export class BillingService {
   constructor(
-    @InjectRepository(Invoice)
-    private invoiceRepository: Repository<Invoice>,
-    @InjectRepository(Payment)
-    private paymentRepository: Repository<Payment>,
-    @InjectRepository(TariffRule)
-    private tariffRepository: Repository<TariffRule>,
-  ) { }
+    @InjectModel(Invoice.name)
+    private invoiceModel: Model<Invoice>,
+    @InjectModel(Payment.name)
+    private paymentModel: Model<Payment>,
+    @InjectModel(Tariff.name)
+    private tariffModel: Model<Tariff>,
+    @InjectModel(TariffRule.name)
+    private tariffRuleModel: Model<TariffRule>,
+    private auditService: AuditService,
+  ) {}
 
   // ==================== COST CALCULATION ====================
 
@@ -37,35 +41,27 @@ export class BillingService {
     volume?: number,
     declaredValue?: number,
   ): Promise<any> {
-    // Find applicable tariff rule
-    const tariff = await this.tariffRepository.findOne({
-      where: {
-        origin,
-        destination,
-        isActive: true,
-      },
-    });
+    // Find applicable tariff
+    const tariff = await this.tariffModel.findOne({
+      origin,
+      destination,
+      isActive: true,
+    }).exec();
 
     let baseRate = 5000; // Default base rate in FCFA
     let ratePerKg = 1500; // Default rate per kg
-    let ratePerCbm = 8000; // Default rate per cubic meter
-    let insuranceRate = 2.5; // Default insurance rate (%)
+    const ratePerCbm = 0; // Default rate per cubic meter
+    const insuranceRate = 0; // Default insurance rate
 
     if (tariff) {
-      baseRate = parseFloat(tariff.baseRate.toString());
-      ratePerKg = parseFloat(tariff.ratePerKg.toString());
-      ratePerCbm = tariff.ratePerCbm
-        ? parseFloat(tariff.ratePerCbm.toString())
-        : 0;
-      insuranceRate = parseFloat(tariff.insuranceRate.toString());
+      baseRate = parseFloat(tariff.basePrice.toString());
+      ratePerKg = parseFloat(tariff.pricePerKg.toString());
     }
 
     // Calculate costs
     const weightCost = weight * ratePerKg;
     const volumeCost = volume ? volume * ratePerCbm : 0;
-    const insuranceCost = declaredValue
-      ? (declaredValue * insuranceRate) / 100
-      : 0;
+    const insuranceCost = declaredValue ? (declaredValue * insuranceRate) / 100 : 0;
 
     const subtotal = baseRate + weightCost + volumeCost + insuranceCost;
     const tax = subtotal * 0.19; // 19% VAT
@@ -82,7 +78,9 @@ export class BillingService {
       tax: Math.round(tax),
       total: Math.round(total),
       currency: 'FCFA',
-      tariffApplied: tariff ? tariff.name : 'Default rates',
+      tariffApplied: tariff
+        ? tariff.serviceType || tariff.origin + '-' + tariff.destination
+        : 'Default rates',
     };
   }
 
@@ -92,80 +90,94 @@ export class BillingService {
     // Generate invoice number
     const invoiceNumber = await this.generateInvoiceNumber();
 
-    const invoice = this.invoiceRepository.create({
+    const invoice = await this.invoiceModel.create({
       ...createInvoiceDto,
       invoiceNumber,
       balance: createInvoiceDto.total,
       amountPaid: 0,
-      status: PaymentStatus.PENDING,
+      status: BillingPaymentStatus.PENDING,
+      createdById: createInvoiceDto.createdById ? new Types.ObjectId(createInvoiceDto.createdById) : undefined,
+      shipmentId: createInvoiceDto.shipmentId ? new Types.ObjectId(createInvoiceDto.shipmentId) : undefined,
+      clientId: createInvoiceDto.clientId ? new Types.ObjectId(createInvoiceDto.clientId) : undefined,
     });
 
-    return this.invoiceRepository.save(invoice);
+    const savedInvoice = await invoice.save();
+
+    // Log audit action
+    await this.auditService.logAction(
+      AuditActionType.CREATE,
+      'INVOICE',
+      savedInvoice._id.toString(),
+      'System',
+      savedInvoice.createdById?.toString() || null,
+      `Created invoice ${savedInvoice.invoiceNumber} for shipment ${savedInvoice.shipmentId || 'N/A'}`,
+    );
+
+    return savedInvoice;
   }
 
-  async findAllInvoices(queryDto?: QueryInvoicesDto): Promise<{ data: Invoice[]; total: number; page: number; limit: number }> {
+  async findAllInvoices(
+    queryDto?: QueryInvoicesDto,
+  ): Promise<{ data: Invoice[]; total: number; page: number; limit: number }> {
     const page = parseInt(queryDto?.page) || 1;
     const limit = parseInt(queryDto?.limit) || 10;
     const offset = (page - 1) * limit;
 
-    const queryBuilder = this.invoiceRepository
-      .createQueryBuilder('invoice')
-      .leftJoinAndSelect('invoice.payments', 'payments')
-      .orderBy('invoice.createdAt', 'DESC');
+    const query: any = {};
 
     if (queryDto?.clientId) {
-      queryBuilder.andWhere('invoice.clientId = :clientId', {
-        clientId: queryDto.clientId,
-      });
+      query.clientId = new Types.ObjectId(queryDto.clientId);
     }
 
     if (queryDto?.shipmentId) {
-      queryBuilder.andWhere('invoice.shipmentId = :shipmentId', {
-        shipmentId: queryDto.shipmentId,
-      });
+      query.shipmentId = new Types.ObjectId(queryDto.shipmentId);
     }
 
     if (queryDto?.status) {
-      queryBuilder.andWhere('invoice.status = :status', { status: queryDto.status });
+      query.status = queryDto.status;
     }
 
     if (queryDto?.dateFrom) {
-      queryBuilder.andWhere('invoice.createdAt >= :dateFrom', {
-        dateFrom: new Date(queryDto.dateFrom),
-      });
+      query.createdAt = { $gte: new Date(queryDto.dateFrom) };
     }
 
     if (queryDto?.dateTo) {
-      queryBuilder.andWhere('invoice.createdAt <= :dateTo', {
-        dateTo: new Date(queryDto.dateTo),
-      });
+      query.createdAt = { ...query.createdAt, $lte: new Date(queryDto.dateTo) };
     }
 
     if (queryDto?.search) {
-      queryBuilder.andWhere(
-        '(invoice.invoiceNumber LIKE :search OR invoice.clientName LIKE :search)',
-        { search: `%${queryDto.search}%` }
-      );
+      query.invoiceNumber = new RegExp(queryDto.search, 'i');
     }
 
-    const [data, total] = await queryBuilder
-      .skip(offset)
-      .take(limit)
-      .getManyAndCount();
+    const [data, total] = await Promise.all([
+      this.invoiceModel
+        .find(query)
+        .populate('clientId', 'name email')
+        .populate('shipmentId', 'trackingNumber')
+        .populate('createdById', 'name email')
+        .sort({ createdAt: -1 })
+        .skip(offset)
+        .limit(limit)
+        .exec(),
+      this.invoiceModel.countDocuments(query).exec(),
+    ]);
 
     return {
       data,
       total,
       page,
-      limit
+      limit,
     };
   }
 
   async findInvoice(id: string): Promise<Invoice> {
-    const invoice = await this.invoiceRepository.findOne({
-      where: { id },
-      relations: ['payments', 'shipment', 'client', 'shipment.createdBy'],
-    });
+    const invoice = await this.invoiceModel
+      .findById(id)
+      .populate('payments')
+      .populate('shipmentId')
+      .populate('clientId')
+      .populate('createdById')
+      .exec();
 
     if (!invoice) {
       throw new NotFoundException(`Invoice with ID ${id} not found`);
@@ -175,10 +187,10 @@ export class BillingService {
   }
 
   async findInvoiceByNumber(invoiceNumber: string): Promise<Invoice> {
-    const invoice = await this.invoiceRepository.findOne({
-      where: { invoiceNumber },
-      relations: ['payments'],
-    });
+    const invoice = await this.invoiceModel
+      .findOne({ invoiceNumber })
+      .populate('payments')
+      .exec();
 
     if (!invoice) {
       throw new NotFoundException(`Invoice ${invoiceNumber} not found`);
@@ -190,41 +202,165 @@ export class BillingService {
   async updateInvoice(
     id: string,
     updateInvoiceDto: UpdateInvoiceDto,
+    userId: string,
+    performedBy: string,
   ): Promise<Invoice> {
     const invoice = await this.findInvoice(id);
-
-    Object.assign(invoice, updateInvoiceDto);
 
     // Recalculate balance if total changed
     if (updateInvoiceDto.total !== undefined) {
       invoice.balance = updateInvoiceDto.total - invoice.amountPaid;
     }
 
-    return this.invoiceRepository.save(invoice);
+    // Update status based on amount paid vs total
+    if (invoice.amountPaid >= invoice.total) {
+      invoice.status = BillingPaymentStatus.PAID;
+    } else if (invoice.amountPaid > 0) {
+      invoice.status = BillingPaymentStatus.PARTIAL;
+    } else if (
+      invoice.dueDate &&
+      new Date() > new Date(invoice.dueDate) &&
+      invoice.status !== BillingPaymentStatus.PAID
+    ) {
+      invoice.status = BillingPaymentStatus.OVERDUE;
+    } else {
+      invoice.status = BillingPaymentStatus.PENDING;
+    }
+
+    const updatedInvoice = await this.invoiceModel
+      .findByIdAndUpdate(
+        id,
+        { $set: { ...updateInvoiceDto, status: invoice.status, balance: invoice.balance } },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    // Log audit action
+    await this.auditService.logAction(
+      AuditActionType.UPDATE,
+      'INVOICE',
+      updatedInvoice._id.toString(),
+      performedBy,
+      userId,
+      `Updated invoice ${updatedInvoice.invoiceNumber} status to ${updatedInvoice.status}`,
+    );
+
+    return updatedInvoice;
+  }
+
+  async createPayment(createPaymentDto: CreatePaymentDto, userId: string, performedBy: string) {
+    if (!createPaymentDto.invoiceId) {
+      throw new BadRequestException('Invoice ID is required for payment');
+    }
+    console.log(createPaymentDto);
+
+    const invoice = await this.findInvoice(createPaymentDto.invoiceId);
+
+    // Validate payment amount
+    if (createPaymentDto.amount <= 0) {
+      throw new BadRequestException('Payment amount must be positive');
+    }
+
+    if (createPaymentDto.amount > invoice.balance) {
+      throw new BadRequestException(
+        `Payment amount (${createPaymentDto.amount}) exceeds invoice balance (${invoice.balance}). Remaining balance: ${invoice.balance}`,
+      );
+    }
+
+    // Create payment
+    const payment = await this.paymentModel.create({
+      amount: createPaymentDto.amount,
+      method: createPaymentDto.method,
+      status: createPaymentDto.status || DtoPaymentStatus.COMPLETED,
+      transactionId: createPaymentDto.transactionId || null,
+      notes: createPaymentDto.notes || null,
+      currency: createPaymentDto.currency || 'XAF',
+      reference: createPaymentDto.reference || null,
+      invoiceId: new Types.ObjectId(createPaymentDto.invoiceId),
+      processedById: userId ? new Types.ObjectId(userId) : undefined,
+    });
+
+    const savedPayment = await payment.save();
+
+    invoice.amountPaid = Number(invoice.amountPaid) + payment.amount;
+    invoice.balance = Number(invoice.total) - Number(invoice.amountPaid);
+
+    // Update invoice status
+    if (invoice.balance <= 0) {
+      invoice.status = BillingPaymentStatus.PAID;
+      invoice.paidAt = new Date();
+    } else if (invoice.amountPaid > 0) {
+      invoice.status = BillingPaymentStatus.PARTIAL;
+    } else if (
+      invoice.dueDate &&
+      new Date() > new Date(invoice.dueDate) &&
+      invoice.status !== BillingPaymentStatus.PAID
+    ) {
+      invoice.status = BillingPaymentStatus.OVERDUE;
+    } else {
+      invoice.status = BillingPaymentStatus.PENDING;
+    }
+
+    await this.invoiceModel.findByIdAndUpdate(invoice._id, {
+      $set: {
+        amountPaid: invoice.amountPaid,
+        balance: invoice.balance,
+        status: invoice.status,
+        paidAt: invoice.paidAt,
+      },
+    }).exec();
+
+    // Log audit action
+    await this.auditService.logAction(
+      AuditActionType.CREATE,
+      'PAYMENT',
+      savedPayment._id.toString(),
+      performedBy,
+      userId,
+      `Recorded payment of ${createPaymentDto.amount} XAF for invoice ${invoice.invoiceNumber}. Remaining balance: ${invoice.balance}`,
+    );
+
+    return savedPayment;
   }
 
   async removeInvoice(id: string): Promise<void> {
     const invoice = await this.findInvoice(id);
 
     // Check if invoice has payments
-    if (invoice.payments && invoice.payments.length > 0) {
-      throw new BadRequestException(
-        'Cannot delete invoice with existing payments',
-      );
+    const payments = await this.paymentModel.find({ invoiceId: new Types.ObjectId(id) }).exec();
+    if (payments && payments.length > 0) {
+      throw new BadRequestException('Cannot delete invoice with existing payments');
     }
 
-    await this.invoiceRepository.remove(invoice);
+    await this.invoiceModel.findByIdAndDelete(id).exec();
+
+    // Log audit action
+    await this.auditService.logAction(
+      AuditActionType.DELETE,
+      'INVOICE',
+      invoice._id.toString(),
+      'System',
+      invoice.createdById?.toString() || null,
+      `Deleted invoice ${invoice.invoiceNumber}`,
+    );
   }
 
   async cancelInvoice(id: string): Promise<Invoice> {
     const invoice = await this.findInvoice(id);
 
-    if (invoice.status === PaymentStatus.PAID) {
+    if (invoice.status === BillingPaymentStatus.PAID) {
       throw new BadRequestException('Cannot cancel a paid invoice');
     }
 
-    invoice.status = PaymentStatus.CANCELLED;
-    return this.invoiceRepository.save(invoice);
+    const updatedInvoice = await this.invoiceModel
+      .findByIdAndUpdate(
+        id,
+        { $set: { status: BillingPaymentStatus.CANCELLED } },
+        { new: true },
+      )
+      .exec();
+
+    return updatedInvoice;
   }
 
   private async generateInvoiceNumber(): Promise<string> {
@@ -236,11 +372,9 @@ export class BillingService {
     const startOfMonth = new Date(year, date.getMonth(), 1);
     const endOfMonth = new Date(year, date.getMonth() + 1, 0);
 
-    const count = await this.invoiceRepository.count({
-      where: {
-        createdAt: Between(startOfMonth, endOfMonth),
-      },
-    });
+    const count = await this.invoiceModel.countDocuments({
+      createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+    }).exec();
 
     const sequence = String(count + 1).padStart(4, '0');
     return `INV-${year}${month}-${sequence}`;
@@ -258,61 +392,74 @@ export class BillingService {
 
     if (createPaymentDto.amount > invoice.balance) {
       throw new BadRequestException(
-        `Payment amount (${createPaymentDto.amount}) exceeds invoice balance (${invoice.balance})`,
+        `Payment amount (${createPaymentDto.amount}) exceeds invoice balance (${invoice.balance}). Remaining balance: ${invoice.balance}`,
       );
     }
 
     // Create payment
-    const payment = this.paymentRepository.create(createPaymentDto);
-    const savedPayment = await this.paymentRepository.save(payment);
+    const payment = await this.paymentModel.create({
+      ...createPaymentDto,
+      invoiceId: new Types.ObjectId(createPaymentDto.invoiceId),
+    });
+
+    const savedPayment = await payment.save();
 
     // Update invoice
-    invoice.amountPaid =
-      parseFloat(invoice.amountPaid.toString()) + createPaymentDto.amount;
+    invoice.amountPaid = parseFloat(invoice.amountPaid.toString()) + createPaymentDto.amount;
     invoice.balance =
-      parseFloat(invoice.total.toString()) -
-      parseFloat(invoice.amountPaid.toString());
+      parseFloat(invoice.total.toString()) - parseFloat(invoice.amountPaid.toString());
 
     // Update status
     if (invoice.balance <= 0) {
-      invoice.status = PaymentStatus.PAID;
+      invoice.status = BillingPaymentStatus.PAID;
       invoice.paidAt = new Date();
     } else if (invoice.amountPaid > 0) {
-      invoice.status = PaymentStatus.PARTIAL;
+      invoice.status = BillingPaymentStatus.PARTIAL;
+    } else if (
+      invoice.dueDate &&
+      new Date() > new Date(invoice.dueDate) &&
+      invoice.status !== BillingPaymentStatus.PAID
+    ) {
+      invoice.status = BillingPaymentStatus.OVERDUE;
+    } else {
+      invoice.status = BillingPaymentStatus.PENDING;
     }
 
-    await this.invoiceRepository.save(invoice);
+    await this.invoiceModel.findByIdAndUpdate(invoice._id, {
+      $set: {
+        amountPaid: invoice.amountPaid,
+        balance: invoice.balance,
+        status: invoice.status,
+        paidAt: invoice.paidAt,
+      },
+    }).exec();
 
     return savedPayment;
   }
 
-  async findAllPayments(filters?: {
-    invoiceId?: string;
-    method?: string;
-  }): Promise<Payment[]> {
-    const query = this.paymentRepository
-      .createQueryBuilder('payment')
-      .leftJoinAndSelect('payment.invoice', 'invoice')
-      .orderBy('payment.createdAt', 'DESC');
+  async findAllPayments(filters?: { invoiceId?: string; method?: string }): Promise<Payment[]> {
+    const query: any = {};
 
     if (filters?.invoiceId) {
-      query.andWhere('payment.invoiceId = :invoiceId', {
-        invoiceId: filters.invoiceId,
-      });
+      query.invoiceId = new Types.ObjectId(filters.invoiceId);
     }
 
     if (filters?.method) {
-      query.andWhere('payment.method = :method', { method: filters.method });
+      query.method = filters.method;
     }
 
-    return query.getMany();
+    return this.paymentModel
+      .find(query)
+      .populate('invoiceId')
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   async findPayment(id: string): Promise<Payment> {
-    const payment = await this.paymentRepository.findOne({
-      where: { id },
-      relations: ['invoice'],
-    });
+    const payment = await this.paymentModel
+      .findById(id)
+      .populate('invoiceId')
+      .exec();
 
     if (!payment) {
       throw new NotFoundException(`Payment with ID ${id} not found`);
@@ -321,38 +468,95 @@ export class BillingService {
     return payment;
   }
 
+  async getInvoicePaymentHistory(invoiceId: string): Promise<Payment[]> {
+    const invoice = await this.findInvoice(invoiceId);
+
+    return await this.paymentModel
+      .find({ invoiceId: invoice._id })
+      .sort({ createdAt: 1 })
+      .exec();
+  }
+
+  async getInvoicePaymentSummary(invoiceId: string): Promise<{
+    total: number;
+    amountPaid: number;
+    balance: number;
+    status: BillingPaymentStatus;
+    payments: Payment[];
+  }> {
+    const invoice = await this.findInvoice(invoiceId);
+    const payments = await this.getInvoicePaymentHistory(invoiceId);
+
+    let totalPayments = 0;
+    for (const payment of payments) {
+      totalPayments += parseInt(payment.amount.toString());
+    }
+
+    return {
+      total: invoice.total,
+      amountPaid: totalPayments,
+      balance: invoice.balance,
+      status: invoice.status,
+      payments,
+    };
+  }
+
   async removePayment(id: string): Promise<void> {
     const payment = await this.findPayment(id);
-    const invoice = payment.invoice;
+    const invoice = await this.findInvoice(payment.invoiceId.toString());
 
     // Revert invoice amounts
-    invoice.amountPaid =
-      parseFloat(invoice.amountPaid.toString()) -
-      parseFloat(payment.amount.toString());
-    invoice.balance =
-      parseFloat(invoice.total.toString()) -
-      parseFloat(invoice.amountPaid.toString());
+    invoice.amountPaid = Number(invoice.amountPaid) - Number(payment.amount);
+    invoice.balance = Number(invoice.total) - Number(invoice.amountPaid);
 
-    // Update status
-    if (invoice.amountPaid <= 0) {
-      invoice.status = PaymentStatus.PENDING;
+    // Update status based on remaining balance
+    if (invoice.balance <= 0) {
+      invoice.status = BillingPaymentStatus.PAID;
+      invoice.paidAt = new Date();
+    } else if (invoice.amountPaid > 0) {
+      invoice.status = BillingPaymentStatus.PARTIAL;
       invoice.paidAt = null;
-    } else if (invoice.balance > 0) {
-      invoice.status = PaymentStatus.PARTIAL;
+    } else if (invoice.dueDate && new Date() > new Date(invoice.dueDate)) {
+      invoice.status = BillingPaymentStatus.OVERDUE;
+      invoice.paidAt = null;
+    } else {
+      invoice.status = BillingPaymentStatus.PENDING;
       invoice.paidAt = null;
     }
 
-    await this.invoiceRepository.save(invoice);
-    await this.paymentRepository.remove(payment);
+    await this.invoiceModel.findByIdAndUpdate(invoice._id, {
+      $set: {
+        amountPaid: invoice.amountPaid,
+        balance: invoice.balance,
+        status: invoice.status,
+        paidAt: invoice.paidAt,
+      },
+    }).exec();
+
+    await this.paymentModel.findByIdAndDelete(id).exec();
   }
 
   // ==================== TARIFF RULE METHODS ====================
 
   async createTariffRule(
     createTariffRuleDto: CreateTariffRuleDto,
+    userId: string,
+    performedBy: string,
   ): Promise<TariffRule> {
-    const tariff = this.tariffRepository.create(createTariffRuleDto);
-    return this.tariffRepository.save(tariff);
+    const rule = await this.tariffRuleModel.create(createTariffRuleDto);
+    const savedRule = await rule.save();
+
+    // Log audit action
+    await this.auditService.logAction(
+      AuditActionType.CREATE,
+      'TARIFF_RULE',
+      savedRule._id.toString(),
+      performedBy,
+      userId,
+      `Created tariff rule from ${savedRule.origin} to ${savedRule.destination}`,
+    );
+
+    return savedRule;
   }
 
   async findAllTariffRules(filters?: {
@@ -360,92 +564,97 @@ export class BillingService {
     destination?: string;
     isActive?: boolean;
   }): Promise<TariffRule[]> {
-    const query = this.tariffRepository.createQueryBuilder('tariff');
+    const query: any = {};
 
     if (filters?.origin) {
-      query.andWhere('tariff.origin = :origin', { origin: filters.origin });
+      query.origin = filters.origin;
     }
 
     if (filters?.destination) {
-      query.andWhere('tariff.destination = :destination', {
-        destination: filters.destination,
-      });
+      query.destination = filters.destination;
     }
 
     if (filters?.isActive !== undefined) {
-      query.andWhere('tariff.isActive = :isActive', {
-        isActive: filters.isActive,
-      });
+      query.isActive = filters.isActive;
     }
 
-    return query.orderBy('tariff.name', 'ASC').getMany();
+    return this.tariffRuleModel.find(query).sort({ name: 1 }).exec();
   }
 
   async findTariffRule(id: string): Promise<TariffRule> {
-    const tariff = await this.tariffRepository.findOne({
-      where: { id },
-    });
+    const rule = await this.tariffRuleModel.findById(id).exec();
 
-    if (!tariff) {
+    if (!rule) {
       throw new NotFoundException(`Tariff rule with ID ${id} not found`);
     }
 
-    return tariff;
+    return rule;
   }
 
   async updateTariffRule(
     id: string,
     updateTariffRuleDto: UpdateTariffRuleDto,
+    userId: string,
+    performedBy: string,
   ): Promise<TariffRule> {
-    const tariff = await this.findTariffRule(id);
-    Object.assign(tariff, updateTariffRuleDto);
-    return this.tariffRepository.save(tariff);
+    const rule = await this.findTariffRule(id);
+
+    const updatedRule = await this.tariffRuleModel
+      .findByIdAndUpdate(
+        id,
+        { $set: updateTariffRuleDto },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    // Log audit action
+    await this.auditService.logAction(
+      AuditActionType.UPDATE,
+      'TARIFF_RULE',
+      updatedRule._id.toString(),
+      performedBy,
+      userId,
+      `Updated tariff rule from ${updatedRule.origin} to ${updatedRule.destination}`,
+    );
+
+    return updatedRule;
   }
 
-  async removeTariffRule(id: string): Promise<void> {
-    const tariff = await this.findTariffRule(id);
-    await this.tariffRepository.remove(tariff);
+  async removeTariffRule(id: string, userId: string, performedBy: string): Promise<void> {
+    const rule = await this.findTariffRule(id);
+    await this.tariffRuleModel.findByIdAndDelete(id).exec();
+
+    // Log audit action
+    await this.auditService.logAction(
+      AuditActionType.DELETE,
+      'TARIFF_RULE',
+      rule._id.toString(),
+      performedBy,
+      userId,
+      `Deleted tariff rule from ${rule.origin} to ${rule.destination}`,
+    );
   }
 
   // ==================== STATISTICS & REPORTING ====================
 
   async getInvoiceStats() {
-    const totalInvoices = await this.invoiceRepository.count();
+    const totalInvoices = await this.invoiceModel.countDocuments().exec();
 
-    const pending = await this.invoiceRepository.count({
-      where: { status: PaymentStatus.PENDING },
-    });
+    const pending = await this.invoiceModel.countDocuments({ status: BillingPaymentStatus.PENDING }).exec();
+    const partial = await this.invoiceModel.countDocuments({ status: BillingPaymentStatus.PARTIAL }).exec();
+    const paid = await this.invoiceModel.countDocuments({ status: BillingPaymentStatus.PAID }).exec();
+    const cancelled = await this.invoiceModel.countDocuments({ status: BillingPaymentStatus.CANCELLED }).exec();
 
-    const partial = await this.invoiceRepository.count({
-      where: { status: PaymentStatus.PARTIAL },
-    });
+    const invoices = await this.invoiceModel.find({ status: { $ne: BillingPaymentStatus.CANCELLED } }).exec();
+    const totalAmount = invoices.reduce((sum, inv) => sum + inv.total, 0);
 
-    const paid = await this.invoiceRepository.count({
-      where: { status: PaymentStatus.PAID },
-    });
+    const paidInvoices = await this.invoiceModel.find({ status: BillingPaymentStatus.PAID }).exec();
+    const totalPaid = paidInvoices.reduce((sum, inv) => sum + inv.amountPaid, 0);
 
-    const cancelled = await this.invoiceRepository.count({
-      where: { status: PaymentStatus.CANCELLED },
-    });
-
-    const totalAmount = await this.invoiceRepository
-      .createQueryBuilder('invoice')
-      .select('SUM(invoice.total)', 'total')
-      .where('invoice.status != :status', { status: PaymentStatus.CANCELLED })
-      .getRawOne();
-
-    const totalPaid = await this.invoiceRepository
-      .createQueryBuilder('invoice')
-      .select('SUM(invoice.amountPaid)', 'paid')
-      .getRawOne();
-
-    const totalOutstanding = await this.invoiceRepository
-      .createQueryBuilder('invoice')
-      .select('SUM(invoice.balance)', 'outstanding')
-      .where('invoice.status IN (:...statuses)', {
-        statuses: [PaymentStatus.PENDING, PaymentStatus.PARTIAL],
-      })
-      .getRawOne();
+    const outstandingInvoices = await this.invoiceModel.find({
+      status: { $in: [BillingPaymentStatus.PENDING, BillingPaymentStatus.PARTIAL] },
+    }).exec();
+    const totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + inv.balance, 0);
 
     return {
       totalInvoices,
@@ -456,61 +665,56 @@ export class BillingService {
         cancelled,
       },
       amounts: {
-        totalAmount: parseFloat(totalAmount?.total || '0'),
-        totalPaid: parseFloat(totalPaid?.paid || '0'),
-        totalOutstanding: parseFloat(totalOutstanding?.outstanding || '0'),
+        totalAmount: Math.round(totalAmount),
+        totalPaid: Math.round(totalPaid),
+        totalOutstanding: Math.round(totalOutstanding),
       },
       currency: 'FCFA',
     };
   }
 
   async getPaymentStats() {
-    const totalPayments = await this.paymentRepository.count();
+    const totalPayments = await this.paymentModel.countDocuments().exec();
 
-    const totalAmount = await this.paymentRepository
-      .createQueryBuilder('payment')
-      .select('SUM(payment.amount)', 'total')
-      .getRawOne();
+    const payments = await this.paymentModel.find().exec();
+    const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
 
-    const byMethod = await this.paymentRepository
-      .createQueryBuilder('payment')
-      .select('payment.method', 'method')
-      .addSelect('COUNT(*)', 'count')
-      .addSelect('SUM(payment.amount)', 'amount')
-      .groupBy('payment.method')
-      .getRawMany();
+    const byMethod = await this.paymentModel.aggregate([
+      {
+        $group: {
+          _id: '$method',
+          count: { $sum: 1 },
+          amount: { $sum: '$amount' },
+        },
+      },
+    ]).exec();
 
     return {
       totalPayments,
-      totalAmount: parseFloat(totalAmount?.total || '0'),
+      totalAmount: Math.round(totalAmount),
       byMethod: byMethod.map((item) => ({
-        method: item.method,
-        count: parseInt(item.count),
-        amount: parseFloat(item.amount),
+        method: item._id,
+        count: item.count,
+        amount: Math.round(item.amount),
       })),
       currency: 'FCFA',
     };
   }
 
   async getRevenueReport(startDate?: Date, endDate?: Date) {
-    const query = this.invoiceRepository
-      .createQueryBuilder('invoice')
-      .where('invoice.status = :status', { status: PaymentStatus.PAID });
+    const query: any = { status: BillingPaymentStatus.PAID };
 
     if (startDate) {
-      query.andWhere('invoice.paidAt >= :startDate', { startDate });
+      query.paidAt = { $gte: startDate };
     }
 
     if (endDate) {
-      query.andWhere('invoice.paidAt <= :endDate', { endDate });
+      query.paidAt = { ...query.paidAt, $lte: endDate };
     }
 
-    const invoices = await query.getMany();
+    const invoices = await this.invoiceModel.find(query).exec();
 
-    const totalRevenue = invoices.reduce(
-      (sum, inv) => sum + parseFloat(inv.total.toString()),
-      0,
-    );
+    const totalRevenue = invoices.reduce((sum, inv) => sum + inv.total, 0);
 
     return {
       period: {
@@ -519,34 +723,20 @@ export class BillingService {
       },
       totalInvoices: invoices.length,
       totalRevenue: Math.round(totalRevenue),
-      averageInvoiceValue:
-        invoices.length > 0 ? Math.round(totalRevenue / invoices.length) : 0,
+      averageInvoiceValue: invoices.length > 0 ? Math.round(totalRevenue / invoices.length) : 0,
       currency: 'FCFA',
     };
   }
 
   async getOutstandingPayments() {
-    const invoices = await this.invoiceRepository.find({
-      where: [
-        { status: PaymentStatus.PENDING },
-        { status: PaymentStatus.PARTIAL },
-      ],
-      order: { dueDate: 'ASC' },
-    });
+    const invoices = await this.invoiceModel.find({
+      status: { $in: [BillingPaymentStatus.PENDING, BillingPaymentStatus.PARTIAL] },
+    }).sort({ dueDate: 1 }).exec();
 
-    const overdue = invoices.filter(
-      (inv) => inv.dueDate && new Date(inv.dueDate) < new Date(),
-    );
+    const overdue = invoices.filter((inv) => inv.dueDate && new Date(inv.dueDate) < new Date());
 
-    const totalOutstanding = invoices.reduce(
-      (sum, inv) => sum + parseFloat(inv.balance.toString()),
-      0,
-    );
-
-    const totalOverdue = overdue.reduce(
-      (sum, inv) => sum + parseFloat(inv.balance.toString()),
-      0,
-    );
+    const totalOutstanding = invoices.reduce((sum, inv) => sum + inv.balance, 0);
+    const totalOverdue = overdue.reduce((sum, inv) => sum + inv.balance, 0);
 
     return {
       totalInvoices: invoices.length,
@@ -555,8 +745,8 @@ export class BillingService {
       totalOverdue: Math.round(totalOverdue),
       invoices: invoices.map((inv) => ({
         invoiceNumber: inv.invoiceNumber,
-        clientId: inv.clientId,
-        balance: parseFloat(inv.balance.toString()),
+        clientId: inv.clientId?.toString(),
+        balance: inv.balance,
         dueDate: inv.dueDate,
         isOverdue: inv.dueDate ? new Date(inv.dueDate) < new Date() : false,
       })),
@@ -565,31 +755,116 @@ export class BillingService {
   }
 
   async getPaymentMethodsBreakdown() {
-    const breakdown = await this.paymentRepository
-      .createQueryBuilder('payment')
-      .select('payment.method', 'method')
-      .addSelect('COUNT(*)', 'count')
-      .addSelect('SUM(payment.amount)', 'totalAmount')
-      .groupBy('payment.method')
-      .getRawMany();
+    const breakdown = await this.paymentModel.aggregate([
+      {
+        $group: {
+          _id: '$method',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' },
+        },
+      },
+    ]).exec();
 
-    const total = breakdown.reduce(
-      (sum, item) => sum + parseFloat(item.totalAmount),
-      0,
-    );
+    const total = breakdown.reduce((sum, item) => sum + item.totalAmount, 0);
 
     return {
       breakdown: breakdown.map((item) => ({
-        method: item.method,
-        count: parseInt(item.count),
-        totalAmount: parseFloat(item.totalAmount),
-        percentage:
-          total > 0
-            ? ((parseFloat(item.totalAmount) / total) * 100).toFixed(2)
-            : 0,
+        method: item._id,
+        count: item.count,
+        totalAmount: Math.round(item.totalAmount),
+        percentage: total > 0 ? ((item.totalAmount / total) * 100).toFixed(2) : '0',
       })),
-      totalAmount: Math.round(total),
+      total: Math.round(total),
       currency: 'FCFA',
     };
+  }
+
+  // ==================== TARIFF METHODS ====================
+
+  async createTariff(
+    createTariffDto: CreateTariffDto,
+    userId: string,
+    performedBy: string,
+  ): Promise<Tariff> {
+    const tariff = await this.tariffModel.create(createTariffDto);
+    const savedTariff = await tariff.save();
+
+    // Log audit action
+    await this.auditService.logAction(
+      AuditActionType.CREATE,
+      'TARIFF',
+      savedTariff._id.toString(),
+      performedBy,
+      userId,
+      `Created tariff from ${savedTariff.origin} to ${savedTariff.destination}`,
+    );
+
+    return savedTariff;
+  }
+
+  async findAllTariffs(filters?: { isActive?: boolean }): Promise<Tariff[]> {
+    const query: any = {};
+
+    if (filters?.isActive !== undefined) {
+      query.isActive = filters.isActive;
+    }
+
+    return this.tariffModel.find(query).exec();
+  }
+
+  async findTariff(id: string): Promise<Tariff> {
+    const tariff = await this.tariffModel.findById(id).exec();
+
+    if (!tariff) {
+      throw new NotFoundException(`Tariff with ID ${id} not found`);
+    }
+
+    return tariff;
+  }
+
+  async updateTariff(
+    id: string,
+    updateTariffDto: UpdateTariffDto,
+    userId: string,
+    performedBy: string,
+  ): Promise<Tariff> {
+    const updatedTariff = await this.tariffModel
+      .findByIdAndUpdate(
+        id,
+        { $set: updateTariffDto },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    if (!updatedTariff) {
+      throw new NotFoundException(`Tariff with ID ${id} not found`);
+    }
+
+    // Log audit action
+    await this.auditService.logAction(
+      AuditActionType.UPDATE,
+      'TARIFF',
+      updatedTariff._id.toString(),
+      performedBy,
+      userId,
+      `Updated tariff from ${updatedTariff.origin} to ${updatedTariff.destination}`,
+    );
+
+    return updatedTariff;
+  }
+
+  async removeTariff(id: string, userId: string, performedBy: string): Promise<void> {
+    const tariff = await this.findTariff(id);
+    await this.tariffModel.findByIdAndDelete(id).exec();
+
+    // Log audit action
+    await this.auditService.logAction(
+      AuditActionType.DELETE,
+      'TARIFF',
+      tariff._id.toString(),
+      performedBy,
+      userId,
+      `Deleted tariff from ${tariff.origin} to ${tariff.destination}`,
+    );
   }
 }

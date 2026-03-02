@@ -82,9 +82,7 @@ export class BillingView extends BaseView {
                 </div>
             </div>
 
-            <div class="layout-grid" style="grid-template-columns: 2fr 1fr; gap: 2rem;">
-                <!-- Invoices List -->
-                <div class="glass-panel">
+            <div class="glass-panel">
                     <h3>Dernières Factures</h3>
                     <div class="invoices-container">
                         <div class="table-responsive">
@@ -131,11 +129,33 @@ export class BillingView extends BaseView {
                     </div>
                 </div>
 
-                <!-- Tariffs Preview - Only for Admins -->
-                <div id="tariffs-section" class="glass-panel">
-                    <h3>Tarifs Actuels</h3>
-                    <div id="tariffs-list" style="display:flex; flex-direction:column; gap:1rem; margin-top:1rem;">
-                        <!-- Populated by JS -->
+                <!-- Tariff Rates Display - Prominent section showing per-kilogram rates -->
+                <div id="tariff-rates-section" class="glass-panel" style="margin-top: 2rem; border: 2px solid rgba(99, 102, 241, 0.3);">
+                    <h3 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <span>Tarifs de Transport</span>
+                        <span style="font-size: 0.9rem; color: var(--text-muted);">Prix par kilogramme</span>
+                    </h3>
+                    <div id="tariff-rates-display" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                        <div style="text-align: center; padding: 1.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 12px; border: 1px solid var(--border);">
+                            <div style="font-size: 1.8rem; font-weight: bold; color: var(--primary); margin-bottom: 0.5rem;">-</div>
+                            <div style="font-size: 0.9rem; color: var(--text-muted);">Chargement des tarifs...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tariffs Management Section - Only for Admins -->
+                <div id="tariffs-section" class="glass-panel" style="margin-top: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3>Tarifs Actuels</h3>
+                        <button id="add-tariff-btn" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa-solid fa-plus"></i> Ajouter Tarif
+                        </button>
+                    </div>
+                    <div id="tariffs-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+                        <div style="text-align: center; padding: 1.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 12px; border: 1px solid var(--border);">
+                            <div style="font-size: 1.8rem; font-weight: bold; color: var(--primary); margin-bottom: 0.5rem;">-</div>
+                            <div style="font-size: 0.9rem; color: var(--text-muted);">Chargement des tarifs...</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -161,8 +181,9 @@ export class BillingView extends BaseView {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Montant</label>
-                            <input type="number" id="amount" required>
+                            <label>Montant (XAF)</label>
+                            <input type="number" id="amount" required readonly style="background: rgba(0,0,0,0.1);">
+                            <small id="amount-help" style="color: var(--text-muted); display: block; margin-top: 0.25rem;">Sélectionnez une expédition pour calculer automatiquement</small>
                         </div>
                         <div class="form-group">
                             <label>Date d'échéance</label>
@@ -187,11 +208,14 @@ export class BillingView extends BaseView {
       this.loadInvoices(this.currentQuery, this.currentPage);
     });
 
-    // Only show tariffs to admins, not to secretaries
+    // Load tariff rates for all users to see the per-kilogram rates
+    this.loadTariffRates();
+
+    // Only show tariffs management to admins, not to secretaries
     if (this.state && (this.state.isAdmin || this.state.get('user')?.role === 'ADMIN')) {
       this.loadTariffs();
     } else {
-      // Hide tariffs section for secretaries
+      // Hide tariffs management section for non-admins
       const tariffsSection = document.getElementById('tariffs-section');
       if (tariffsSection) {
         tariffsSection.style.display = 'none';
@@ -259,6 +283,45 @@ export class BillingView extends BaseView {
       } catch (err) {
         console.error(err);
         shipmentSelect.innerHTML = '<option value="">Erreur chargement</option>';
+      }
+    });
+
+    // Handle Shipment Change -> Calculate Amount
+    shipmentSelect.addEventListener('change', async (e) => {
+      const shipmentId = e.target.value;
+      const amountInput = document.getElementById('amount');
+
+      if (!shipmentId) {
+        amountInput.value = '';
+        return;
+      }
+
+      try {
+        // Get shipment details to calculate amount
+        const shipment = await dataService.getShipment(shipmentId);
+        console.log(shipment);
+        const tarrif = await dataService.getTariffs();
+        console.log(tarrif);
+        let tar = tarrif.filter((t) => {
+          console.log(t.origin);
+          console.log(shipment.origin);
+          return t.origin === shipment.origin;
+        });
+        console.log(tar);
+
+        // Calculate amount based on weight and tariff rates
+        // For now, use a simple calculation - in a real app, this would use actual tariff rules
+        const weight = shipment.weight || 1; // Default to 1kg if no weight
+        const baseRate = parseInt(tar[0].ratePerKg); // Default base rate
+        // const ratePerKg = 2000; // Default rate per kg
+
+        // Calculate: base rate + (weight - 1) * rate per kg
+        const calculatedAmount = baseRate * weight;
+
+        amountInput.value = calculatedAmount;
+      } catch (err) {
+        console.error('Error calculating amount:', err);
+        amountInput.value = '';
       }
     });
 
@@ -442,6 +505,15 @@ export class BillingView extends BaseView {
           toast.show('Copié !');
         });
       });
+
+      // Bind tariff management button if user is admin
+      const addTariffBtn = document.getElementById('add-tariff-btn');
+      if (addTariffBtn && (this.state.isAdmin || this.state.get('user')?.role === 'SUPER_ADMIN')) {
+        addTariffBtn.addEventListener('click', () => {
+          // Open tariff management modal or navigate to tariff management page
+          this.showTariffManagement();
+        });
+      }
     } catch (e) {
       console.error(e);
     }
@@ -478,7 +550,7 @@ export class BillingView extends BaseView {
       const win = window.open('', '', 'height=700,width=900');
       win.document.write('<html><head><title>Facture</title>');
       win.document.write(
-        '<style>body{font-family:sans-serif; padding:10px; margin:0; font-size:12px;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{padding:4px 6px; border-bottom:1px solid #ddd; text-align:left;} .text-right{text-align:right;} .header{display:flex; justify-content:space-between; margin-bottom:0.5rem;} h1{margin:0 0 0.2rem 0; font-size:1.5rem;} h2{margin:0 0 0.2rem 0; font-size:1.2rem;} h3{margin:0.5rem 0 0.2rem 0; font-size:1rem;} h4{margin:0.3rem 0 0.2rem 0; font-size:0.9rem;} p{margin:0.1rem 0; line-height:1.2;} .footer{margin-top:0.5rem; font-size:0.8rem; text-align:center; color:#666;}</style>',
+        '<style>body{font-family:sans-serif; padding:10px; margin:0; font-size:12px;} table{width:100%; border-collapse:collapse; font-size:12px;} th,td{padding:4px 6px; border-bottom:1px solid #ddd; text-align:left;} .text-right{text-align:right;} .header{display:flex; justify-content:space-between; margin-bottom:0.5rem;} h1{margin:0 0 0.2rem 0; font-size:1.5rem;} h2{margin:0 0 0.2rem 0; font-size:1.2rem;} h3{margin:0.5rem 0 0.2rem 0; font-size:1rem;} h4{margin:0.3rem 0 0.2rem 0; font-size:0.9rem;} p{margin:0.1rem 0; line-height:1.2;} .footer{margin-top:0.5rem; font-size:0.8rem; text-align:center; color:#666;} .payment-summary { border: 1px solid #eee; padding: 15px; margin-top: 20px; border-radius: 8px; background-color: #f9f9f9; } .summary-item { display: flex; justify-content: space-between; padding: 5px 0; } .summary-item.total { font-weight: bold; font-size: 1.2em; border-top: 2px solid #333; padding-top: 10px; } .payment-history table { margin-top: 15px; } .status-badge { padding: 3px 8px; border-radius: 12px; font-size: 0.8em; color: white; } .status-paid { background-color: #28a745; } .status-partial { background-color: #ffc107; color: black; } .status-pending { background-color: #dc3545; } </style>',
       );
       console.log(content);
 
@@ -513,7 +585,7 @@ export class BillingView extends BaseView {
                     <p><strong>N°:</strong> ${inv.invoiceNumber}</p>
                     <p><strong>Date:</strong> ${new Date(inv.createdAt).toLocaleDateString()}</p>
                     <p><strong>Échéance:</strong> ${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : '-'}</p>
-                    <p><strong>Statut:</strong> ${this.getStatusLabel(inv.status)}</p>
+                    <p><strong>Statut:</strong> <span class="status-badge status-${inv.status.toLowerCase()}">${this.getStatusLabel(inv.status)}</span></p>
                 </div>
             </div>
 
@@ -587,19 +659,23 @@ export class BillingView extends BaseView {
                         <td style="padding:6px; border-bottom:1px solid #eee; text-align:right;">${formatters.currency(inv.subtotal)}</td>
                     </tr>
                 </tbody>
-                <tfoot>
-                    <tr>
-                        <td style="padding:6px; text-align:right; font-weight:bold;">Sous-total</td>
-                        <td style="padding:6px; text-align:right;">${formatters.currency(inv.subtotal)}</td>
-                    </tr>
-                    ${inv.tax > 0 ? `<tr><td style="padding:6px; text-align:right;">Taxe</td><td style="padding:6px; text-align:right;">${formatters.currency(inv.tax)}</td></tr>` : ''}
-                    ${inv.discount > 0 ? `<tr><td style="padding:6px; text-align:right;">Remise</td><td style="padding:6px; text-align:right;">-${formatters.currency(inv.discount)}</td></tr>` : ''}
-                    <tr>
-                        <td style="padding:8px 6px; text-align:right; font-weight:bold; font-size:1.1rem; border-top:2px solid #000;">Total à Payer</td>
-                        <td style="padding:8px 6px; text-align:right; font-weight:bold; font-size:1.1rem; border-top:2px solid #000; color:var(--primary);">${formatters.currency(inv.total)}</td>
-                    </tr>
-                </tfoot>
             </table>
+
+            <div id="payment-summary-section"></div>
+            <div id="invoice-payments-list" class="payment-history"></div>
+
+            <div style="margin-top:1rem; padding-top:1rem; border-top:1px solid #eee;">
+                <h4 style="margin-bottom:0.5rem; color:#333;">Paiements</h4>
+                <div style="display:flex; gap:1rem; align-items:end;">
+                    <div style="flex:1;">
+                        <label>Montant à payer (XAF)</label>
+                        <input type="number" id="payment-amount" placeholder="Montant du paiement" min="0" max="${inv.balance}" style="width:100%;">
+                    </div>
+                    <button id="record-payment-btn" class="btn btn-success" style="white-space:nowrap;">
+                        <i class="fa-solid fa-credit-card"></i> Enregistrer Paiement
+                    </button>
+                </div>
+            </div>
 
             <div class="footer">
                 <p>Merci de votre confiance.</p>
@@ -609,6 +685,109 @@ export class BillingView extends BaseView {
 
     document.getElementById('invoice-print-area').innerHTML = content;
     modal.style.display = 'flex';
+
+    // Load and display payments for this invoice
+    this.loadInvoicePayments(inv.id);
+
+    // Add payment event listener
+    document.getElementById('record-payment-btn').addEventListener('click', async () => {
+      const amount = parseFloat(document.getElementById('payment-amount').value);
+      if (!amount || amount <= 0) {
+        toast.error('Veuillez entrer un montant valide');
+        return;
+      }
+
+      if (amount > inv.balance) {
+        toast.error('Le montant du paiement dépasse le solde de la facture');
+        return;
+      }
+
+      try {
+        await dataService.recordPayment({
+          invoiceId: inv.id,
+          amount: amount,
+          method: 'CASH', // Default payment method
+          status: 'COMPLETED', // Default status
+        });
+
+        toast.success('Paiement enregistré');
+        document.getElementById('payment-amount').value = '';
+        this.loadInvoicePayments(inv.id); // Reload payments
+        this.loadInvoices(this.currentInvoiceQuery, this.currentPage); // Reload invoice list to update status
+      } catch (err) {
+        toast.error(err.message || 'Erreur enregistrement paiement');
+      }
+    });
+  }
+
+  async loadInvoicePayments(invoiceId) {
+    try {
+      const summary = await dataService.getInvoicePaymentSummary(invoiceId);
+      console.log('summarry=====>', summary);
+
+      const { total, amountPaid, balance, payments } = summary;
+
+      const summaryContainer = document.getElementById('payment-summary-section');
+      summaryContainer.innerHTML = `
+        <div class="payment-summary">
+          <div class="summary-item">
+            <span>Total Facture:</span>
+            <span>${formatters.currency(total)}</span>
+          </div>
+          <div class="summary-item">
+            <span>Montant Payé:</span>
+            <span>${formatters.currency(amountPaid)}</span>
+          </div>
+          <div class="summary-item total">
+            <span>Solde Restant:</span>
+            <span>${formatters.currency(balance)}</span>
+          </div>
+        </div>
+      `;
+
+      const historyContainer = document.getElementById('invoice-payments-list');
+      if (payments.length === 0) {
+        historyContainer.innerHTML =
+          '<p style="color:var(--text-muted); font-style:italic; margin-top:1rem;">Aucun paiement enregistré</p>';
+        return;
+      }
+
+      console.log('============>', payments);
+
+      historyContainer.innerHTML = `
+        <h4 style="margin-top:1.5rem; margin-bottom:0.5rem;">Historique des Paiements</h4>
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="background:#f9f9f9;">
+              <th style="padding:6px; text-align:left; border-bottom:2px solid #ddd;">Date</th>
+              <th style="padding:6px; text-align:left; border-bottom:2px solid #ddd;">Montant</th>
+              <th style="padding:6px; text-align:left; border-bottom:2px solid #ddd;">Méthode</th>
+              <th style="padding:6px; text-align:left; border-bottom:2px solid #ddd;">Traité par</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${payments
+              .map(
+                (payment) => `
+              <tr>
+                <td style="padding:6px; border-bottom:1px solid #eee;color:#000;">${new Date(payment.createdAt).toLocaleDateString()}</td>
+                <td style="padding:6px; border-bottom:1px solid #eee;color:#000;">${formatters.currency(payment.amount)}</td>
+                <td style="padding:6px; border-bottom:1px solid #eee;color:#000;">${payment.method}</td>
+                <td style="padding:6px; border-bottom:1px solid #eee;color:#000;">${payment.processedBy?.name || 'N/A'}</td>
+              </tr>
+            `,
+              )
+              .join('')}
+          </tbody>
+        </table>
+      `;
+    } catch (err) {
+      console.error('Error loading invoice payments:', err);
+      const container = document.getElementById('invoice-payments-list');
+      if (container) {
+        container.innerHTML = '<p style="color:var(--danger);">Erreur chargement des paiements</p>';
+      }
+    }
   }
 
   setupStatusModal() {
@@ -696,5 +875,172 @@ export class BillingView extends BaseView {
     } catch (e) {
       console.error(e);
     }
+  }
+
+  async loadTariffRates() {
+    try {
+      const response = await fetch('/api/v1/tariffs', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const { data: tariffs } = await response.json();
+      const container = document.getElementById('tariff-rates-display');
+
+      if (tariffs.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 1.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 12px; border: 1px solid var(--border); grid-column: 1 / -1;">
+            <div style="font-size: 1.8rem; font-weight: bold; color: var(--primary); margin-bottom: 0.5rem;">-</div>
+            <div style="font-size: 0.9rem; color: var(--text-muted);">Aucun tarif configuré</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = tariffs
+        .map(
+          (tariff) => `
+        <div class="glass-panel" style="padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div>
+              <div style="font-size: 1.2rem; font-weight: 600; color: var(--primary);">${tariff.origin}</div>
+              <div style="font-size: 0.9rem; color: var(--text-muted);">${tariff.destination}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 1.5rem; font-weight: bold; color: var(--success);">${tariff.pricePerKg} XAF</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">/kg</div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Base:</div>
+            <div style="text-align: right; font-weight: 500;">${tariff.basePrice} XAF</div>
+
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Poids:</div>
+            <div style="text-align: right; font-weight: 500;">${tariff.minWeight || '0'}-${tariff.maxWeight || '∞'} kg</div>
+
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Service:</div>
+            <div style="text-align: right; font-weight: 500;">${tariff.serviceType || 'Standard'}</div>
+          </div>
+        </div>
+      `,
+        )
+        .join('');
+    } catch (error) {
+      console.error('Error loading tariff rates:', error);
+      const container = document.getElementById('tariff-rates-display');
+      if (container) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 1.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 12px; border: 1px solid var(--border); grid-column: 1 / -1;">
+            <div style="font-size: 1.8rem; font-weight: bold; color: var(--danger); margin-bottom: 0.5rem;"><i class="fa-solid fa-exclamation-triangle"></i></div>
+            <div style="font-size: 0.9rem; color: var(--text-muted);">Erreur de chargement des tarifs</div>
+          </div>
+        `;
+      }
+    }
+  }
+
+  showTariffManagement() {
+    // Create a modal for tariff management
+    const modalHtml = `
+      <div id="tariff-management-modal" class="modal-overlay" style="display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+        <div class="modal-container glass-panel" style="max-width:600px; width:90%; max-height:90vh; overflow-y:auto; padding:1.5rem;">
+          <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <h3>Gestion des Tarifs</h3>
+            <button class="modal-close" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+          </div>
+
+          <form id="tariff-form">
+            <div class="form-group" style="margin-bottom:1rem;">
+              <label>Origine</label>
+              <input type="text" id="tariff-origin" placeholder="Pays d'origine" required class="input w-full">
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem;">
+              <label>Destination</label>
+              <input type="text" id="tariff-destination" placeholder="Pays de destination" required class="input w-full">
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem;">
+              <label>Prix de base (XAF)</label>
+              <input type="number" id="tariff-base-price" placeholder="Prix pour le premier kg" required class="input w-full">
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem;">
+              <label>Prix par kg supplémentaire (XAF)</label>
+              <input type="number" id="tariff-price-per-kg" placeholder="Prix par kg supplémentaire" required class="input w-full">
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem;">
+              <label>Type de service (facultatif)</label>
+              <input type="text" id="tariff-service-type" placeholder="Standard, Express, etc." class="input w-full">
+            </div>
+
+            <div class="form-group" style="margin-bottom:1.5rem;">
+              <label>Poids minimum (kg) (facultatif)</label>
+              <input type="number" step="0.1" id="tariff-min-weight" placeholder="Poids minimum" class="input w-full">
+            </div>
+
+            <button type="submit" class="btn btn-primary w-full">Enregistrer</button>
+          </form>
+        </div>
+      </div>
+    `;
+
+    // Add modal to document
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Bind events for the modal
+    const modal = document.getElementById('tariff-management-modal');
+    const closeModal = () => modal.remove();
+
+    modal.querySelector('.modal-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    // Form submission
+    document.getElementById('tariff-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = {
+        origin: document.getElementById('tariff-origin').value,
+        destination: document.getElementById('tariff-destination').value,
+        basePrice: Number(document.getElementById('tariff-base-price').value),
+        pricePerKg: Number(document.getElementById('tariff-price-per-kg').value),
+        serviceType: document.getElementById('tariff-service-type').value || null,
+        minWeight: document.getElementById('tariff-min-weight').value
+          ? Number(document.getElementById('tariff-min-weight').value)
+          : null,
+      };
+
+      try {
+        const response = await fetch('/api/v1/tariffs', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        toast.success('Tarif enregistré');
+        closeModal();
+        this.loadTariffRates(); // Refresh the tariff display
+      } catch (err) {
+        console.error('Error creating tariff:', err);
+        toast.error('Erreur enregistrement tarif');
+      }
+    });
   }
 }

@@ -59,6 +59,9 @@ export class BaseView {
                         ${
                           state.isAdmin
                             ? `
+                        <a href="#tariff-management" class="nav-item ${activeNav === 'tariff-management' ? 'active' : ''}">
+                            <i class="fa-solid fa-tags"></i> <span>Gestion des Tarifs</span>
+                        </a>
                         <a href="#audit-trail" class="nav-item ${activeNav === 'audit-trail' ? 'active' : ''}">
                             <i class="fa-solid fa-clipboard-list"></i> <span>Journal d'Audit</span>
                         </a>
