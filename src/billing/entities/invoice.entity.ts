@@ -69,6 +69,13 @@ export class Invoice {
   @CreateDateColumn()
   createdAt: Date;
 
+  @Column({ nullable: true })
+  createdById: string;
+
+  @ManyToOne('User')
+  @JoinColumn({ name: 'createdById' })
+  createdBy: any;
+
   @UpdateDateColumn()
   updatedAt: Date;
 }

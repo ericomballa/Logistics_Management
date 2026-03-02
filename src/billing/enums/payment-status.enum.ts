@@ -4,4 +4,5 @@ export enum PaymentStatus {
   PAID = 'PAID',
   CANCELLED = 'CANCELLED',
   REFUNDED = 'REFUNDED',
+  OVERDUE = 'OVERDUE',
 }

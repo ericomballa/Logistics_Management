@@ -1,12 +1,17 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
 import { WarehouseService } from './warehouse.service';
 import { WarehouseController } from './warehouse.controller';
-import { Warehouse } from './entities/warehouse.entity';
-import { WarehouseInventory } from './entities/warehouse-inventory.entity';
+import { Warehouse, WarehouseSchema } from './schemas/warehouse.schema';
+import { WarehouseInventory, WarehouseInventorySchema } from './schemas/warehouse-inventory.schema';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Warehouse, WarehouseInventory])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Warehouse.name, schema: WarehouseSchema },
+      { name: WarehouseInventory.name, schema: WarehouseInventorySchema },
+    ]),
+  ],
   providers: [WarehouseService],
   controllers: [WarehouseController],
   exports: [WarehouseService],

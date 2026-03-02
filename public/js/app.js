@@ -62,6 +62,12 @@ function initializeRoutes() {
     () => import('./views/reports.view.js').then((m) => m.ReportsView),
     'ADMIN_OR_SECRETARY',
   );
+
+  router.add(
+    'tariff-management',
+    () => import('./views/tariff-management.view.js').then((m) => m.TariffManagementView),
+    'ADMIN',
+  );
 }
 
 init();

@@ -32,7 +32,7 @@ export class ShipmentsController {
   @Post()
   @ApiOperation({ summary: 'Create shipment' })
   create(@Body() createShipmentDto: CreateShipmentDto, @CurrentUser() user: any) {
-    return this.shipmentsService.create(createShipmentDto, user.userId);
+    return this.shipmentsService.create(createShipmentDto, user.userId, user.name || user.email);
   }
 
   @Get()

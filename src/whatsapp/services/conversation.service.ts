@@ -1,65 +1,70 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { WhatsappUser } from '../entities/whatsapp-user.entity';
-import { Conversation } from '../entities/conversation.entity';
-import { Message } from '../entities/message.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { WhatsappUser } from '../schemas/whatsapp-user.schema';
+import { Conversation } from '../schemas/conversation.schema';
+import { Message } from '../schemas/message.schema';
 
 @Injectable()
 export class ConversationService {
   private readonly logger = new Logger(ConversationService.name);
 
   constructor(
-    @InjectRepository(WhatsappUser)
-    private userRepository: Repository<WhatsappUser>,
-    @InjectRepository(Conversation)
-    private conversationRepository: Repository<Conversation>,
-    @InjectRepository(Message)
-    private messageRepository: Repository<Message>,
+    @InjectModel(WhatsappUser.name)
+    private userModel: Model<WhatsappUser>,
+    @InjectModel(Conversation.name)
+    private conversationModel: Model<Conversation>,
+    @InjectModel(Message.name)
+    private messageModel: Model<Message>,
   ) {}
 
   async getOrCreateUser(phoneNumber: string, name?: string): Promise<WhatsappUser> {
-    let user = await this.userRepository.findOne({ where: { phoneNumber } });
+    let user = await this.userModel.findOne({ phoneNumber }).exec();
 
     if (!user) {
-      user = this.userRepository.create({
+      user = await this.userModel.create({
         phoneNumber,
         name: name || 'Utilisateur',
       });
-      await this.userRepository.save(user);
+      await user.save();
       this.logger.log(`Nouvel utilisateur créé: ${phoneNumber}`);
     } else if (name && !user.name) {
       user.name = name;
-      await this.userRepository.save(user);
+      await user.save();
     }
 
     return user;
   }
 
   async getActiveConversation(userId: string): Promise<Conversation> {
-    let conversation = await this.conversationRepository.findOne({
-      where: { userId, status: 'active' },
-    });
+    let conversation = await this.conversationModel.findOne({
+      userId,
+      status: 'active',
+    }).exec();
 
     if (!conversation) {
-      conversation = this.conversationRepository.create({
+      conversation = await this.conversationModel.create({
         userId,
         status: 'active',
         context: {},
         currentStep: 'greeting',
       });
-      await this.conversationRepository.save(conversation);
+      await conversation.save();
     }
 
     return conversation;
   }
 
   async updateConversationContext(conversationId: string, context: any): Promise<void> {
-    await this.conversationRepository.update(conversationId, { context });
+    await this.conversationModel.findByIdAndUpdate(conversationId, {
+      $set: { context },
+    }).exec();
   }
 
   async updateConversationStep(conversationId: string, step: string): Promise<void> {
-    await this.conversationRepository.update(conversationId, { currentStep: step });
+    await this.conversationModel.findByIdAndUpdate(conversationId, {
+      $set: { currentStep: step },
+    }).exec();
   }
 
   async saveMessage(
@@ -68,20 +73,20 @@ export class ConversationService {
     sender: 'user' | 'bot',
     whatsappMessageId?: string,
   ): Promise<Message> {
-    const message = this.messageRepository.create({
+    const message = await this.messageModel.create({
       conversationId,
       content,
       sender,
       whatsappMessageId,
     });
-    return await this.messageRepository.save(message);
+    return message.save();
   }
 
   async getConversationHistory(conversationId: string, limit: number = 10): Promise<Message[]> {
-    return await this.messageRepository.find({
-      where: { conversationId },
-      order: { createdAt: 'DESC' },
-      take: limit,
-    });
+    return this.messageModel
+      .find({ conversationId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .exec();
   }
 }
