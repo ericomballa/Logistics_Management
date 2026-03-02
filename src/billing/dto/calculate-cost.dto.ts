@@ -43,4 +43,13 @@ export class CalculateCostDto {
   @IsNumber()
   @Min(0)
   declaredValue?: number;
+
+  @ApiProperty({
+    example: 'STANDARD',
+    required: false,
+    description: 'Service type (STANDARD, EXPRESS, etc.)',
+  })
+  @IsOptional()
+  @IsString()
+  serviceType?: string;
 }

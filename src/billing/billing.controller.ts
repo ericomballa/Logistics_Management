@@ -29,6 +29,8 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CalculateCostDto } from './dto/calculate-cost.dto';
 import { CreateTariffRuleDto } from './dto/create-tariff-rule.dto';
 import { UpdateTariffRuleDto } from './dto/update-tariff-rule.dto';
+import { CreateTariffDto } from './dto/create-tariff.dto';
+import { UpdateTariffDto } from './dto/update-tariff.dto';
 import { QueryInvoicesDto } from './dto/query-invoices.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -63,18 +65,20 @@ export class BillingController {
   // ==================== INVOICE ENDPOINTS ====================
 
   @Post('invoices')
-  @Roles(UserRole.AGENT, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.AGENT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SECRETARY)
   @ApiOperation({ summary: 'Create new invoice' })
   @ApiResponse({ status: 201, description: 'Invoice created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input' })
-  createInvoice(
-    @Body() createInvoiceDto: CreateInvoiceDto,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    @CurrentUser() user: any,
-  ) {
+  createInvoice(@Body() createInvoiceDto: CreateInvoiceDto, @CurrentUser() user: any) {
     console.log(createInvoiceDto);
 
-    return this.billingService.createInvoice(createInvoiceDto);
+    // Add the user ID to the DTO
+    const invoiceWithCreator = {
+      ...createInvoiceDto,
+      createdById: user.userId,
+    };
+
+    return this.billingService.createInvoice(invoiceWithCreator);
   }
 
   @Get('invoices')
@@ -116,13 +120,22 @@ export class BillingController {
   }
 
   @Patch('invoices/:id')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SECRETARY)
   @ApiOperation({ summary: 'Update invoice' })
   @ApiParam({ name: 'id', description: 'Invoice ID' })
   @ApiResponse({ status: 200, description: 'Invoice updated successfully' })
   @ApiResponse({ status: 404, description: 'Invoice not found' })
-  updateInvoice(@Param('id') id: string, @Body() updateInvoiceDto: UpdateInvoiceDto) {
-    return this.billingService.updateInvoice(id, updateInvoiceDto);
+  updateInvoice(
+    @Param('id') id: string,
+    @Body() updateInvoiceDto: UpdateInvoiceDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.billingService.updateInvoice(
+      id,
+      updateInvoiceDto,
+      user.userId,
+      user.name || user.email,
+    );
   }
 
   @Delete('invoices/:id')
@@ -137,7 +150,7 @@ export class BillingController {
   }
 
   @Post('invoices/:id/cancel')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SECRETARY)
   @ApiOperation({ summary: 'Cancel invoice' })
   @ApiParam({ name: 'id', description: 'Invoice ID' })
   @ApiResponse({ status: 200, description: 'Invoice cancelled' })
@@ -157,11 +170,35 @@ export class BillingController {
   })
   @ApiResponse({ status: 404, description: 'Invoice not found' })
   addPayment(@Body() createPaymentDto: CreatePaymentDto, @CurrentUser() user: any) {
-    // Auto-set processedBy if not provided
-    if (!createPaymentDto.processedBy) {
-      createPaymentDto.processedBy = user.userId;
-    }
-    return this.billingService.addPayment(createPaymentDto);
+    return this.billingService.createPayment(
+      createPaymentDto,
+      user.userId,
+      user.name || user.email,
+    );
+  }
+
+  @Post('invoices/:id/payments')
+  @Roles(UserRole.AGENT, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Make partial or full payment for an invoice' })
+  @ApiParam({ name: 'id', description: 'Invoice ID' })
+  @ApiResponse({ status: 201, description: 'Payment recorded successfully' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input or payment exceeds balance',
+  })
+  @ApiResponse({ status: 404, description: 'Invoice not found' })
+  makePartialPayment(
+    @Param('id') invoiceId: string,
+    @Body() createPaymentDto: CreatePaymentDto,
+    @CurrentUser() user: any,
+  ) {
+    // Override invoiceId from the route parameter
+    createPaymentDto.invoiceId = invoiceId;
+    return this.billingService.createPayment(
+      createPaymentDto,
+      user.userId,
+      user.name || user.email,
+    );
   }
 
   @Get('payments')
@@ -190,6 +227,24 @@ export class BillingController {
     return this.billingService.findPayment(id);
   }
 
+  @Get('invoices/:id/payments')
+  @ApiOperation({ summary: 'Get payment history for an invoice' })
+  @ApiParam({ name: 'id', description: 'Invoice ID' })
+  @ApiResponse({ status: 200, description: 'Payment history for invoice' })
+  @ApiResponse({ status: 404, description: 'Invoice not found' })
+  getInvoicePaymentHistory(@Param('id') id: string) {
+    return this.billingService.getInvoicePaymentHistory(id);
+  }
+
+  @Get('invoices/:id/payment-summary')
+  @ApiOperation({ summary: 'Get payment summary for an invoice' })
+  @ApiParam({ name: 'id', description: 'Invoice ID' })
+  @ApiResponse({ status: 200, description: 'Payment summary for invoice' })
+  @ApiResponse({ status: 404, description: 'Invoice not found' })
+  getInvoicePaymentSummary(@Param('id') id: string) {
+    return this.billingService.getInvoicePaymentSummary(id);
+  }
+
   @Delete('payments/:id')
   @Roles(UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -206,8 +261,12 @@ export class BillingController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create tariff rule' })
   @ApiResponse({ status: 201, description: 'Tariff rule created' })
-  createTariffRule(@Body() createTariffRuleDto: CreateTariffRuleDto) {
-    return this.billingService.createTariffRule(createTariffRuleDto);
+  createTariffRule(@Body() createTariffRuleDto: CreateTariffRuleDto, @CurrentUser() user: any) {
+    return this.billingService.createTariffRule(
+      createTariffRuleDto,
+      user.userId,
+      user.name || user.email,
+    );
   }
 
   @Get('tariffs')
@@ -221,6 +280,8 @@ export class BillingController {
     @Query('destination') destination?: string,
     @Query('isActive') isActive?: boolean,
   ) {
+    console.log('hello tarriff==================>');
+
     return this.billingService.findAllTariffRules({
       origin,
       destination,
@@ -242,8 +303,17 @@ export class BillingController {
   @ApiOperation({ summary: 'Update tariff rule' })
   @ApiParam({ name: 'id', description: 'Tariff rule ID' })
   @ApiResponse({ status: 200, description: 'Tariff rule updated' })
-  updateTariffRule(@Param('id') id: string, @Body() updateTariffRuleDto: UpdateTariffRuleDto) {
-    return this.billingService.updateTariffRule(id, updateTariffRuleDto);
+  updateTariffRule(
+    @Param('id') id: string,
+    @Body() updateTariffRuleDto: UpdateTariffRuleDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.billingService.updateTariffRule(
+      id,
+      updateTariffRuleDto,
+      user.userId,
+      user.name || user.email,
+    );
   }
 
   @Delete('tariffs/:id')
@@ -252,8 +322,65 @@ export class BillingController {
   @ApiOperation({ summary: 'Delete tariff rule' })
   @ApiParam({ name: 'id', description: 'Tariff rule ID' })
   @ApiResponse({ status: 204, description: 'Tariff rule deleted' })
-  removeTariffRule(@Param('id') id: string) {
-    return this.billingService.removeTariffRule(id);
+  removeTariffRule(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.billingService.removeTariffRule(id, user.userId, user.name || user.email);
+  }
+
+  // ==================== TARIFF MANAGEMENT ====================
+
+  @Post('tariffs')
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create new tariff' })
+  @ApiResponse({ status: 201, description: 'Tariff created' })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  createTariff(@Body() createTariffDto: CreateTariffDto, @CurrentUser() user: any) {
+    return this.billingService.createTariff(createTariffDto, user.userId, user.name || user.email);
+  }
+
+  @Get('tariffs')
+  @ApiOperation({ summary: 'Get all tariffs' })
+  @ApiResponse({ status: 200, description: 'List of tariffs' })
+  getTariffs() {
+    return this.billingService.findAllTariffs();
+  }
+
+  @Get('tariffs/:id')
+  @ApiOperation({ summary: 'Get tariff by ID' })
+  @ApiParam({ name: 'id', description: 'Tariff ID' })
+  @ApiResponse({ status: 200, description: 'Tariff found' })
+  @ApiResponse({ status: 404, description: 'Tariff not found' })
+  getTariff(@Param('id') id: string) {
+    return this.billingService.findTariff(id);
+  }
+
+  @Patch('tariffs/:id')
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update tariff' })
+  @ApiParam({ name: 'id', description: 'Tariff ID' })
+  @ApiResponse({ status: 200, description: 'Tariff updated' })
+  @ApiResponse({ status: 404, description: 'Tariff not found' })
+  updateTariff(
+    @Param('id') id: string,
+    @Body() updateTariffDto: UpdateTariffDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.billingService.updateTariff(
+      id,
+      updateTariffDto,
+      user.userId,
+      user.name || user.email,
+    );
+  }
+
+  @Delete('tariffs/:id')
+  @Roles(UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete tariff (deactivate)' })
+  @ApiParam({ name: 'id', description: 'Tariff ID' })
+  @ApiResponse({ status: 204, description: 'Tariff deactivated' })
+  @ApiResponse({ status: 404, description: 'Tariff not found' })
+  deleteTariff(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.billingService.removeTariff(id, user.userId, user.name || user.email);
   }
 
   // ==================== REPORTING ====================

@@ -25,6 +25,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() loginDto: LoginDto) {
+    console.log('hellloloe');
+
     return this.authService.login(loginDto);
   }
 
@@ -50,11 +52,14 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user' })
   @ApiResponse({ status: 200, description: 'User info returned' })
   async getProfile(@CurrentUser() user: any) {
+    console.log('current user', user);
+
     return {
       userId: user.userId,
       email: user.email,
       role: user.role,
       agencyId: user.agencyId,
+      name: user.name,
     };
   }
 

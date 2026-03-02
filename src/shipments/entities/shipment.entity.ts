@@ -49,6 +49,12 @@ export class Shipment {
   @Column({ nullable: true })
   receiverCity: string;
 
+  @Column({ nullable: true })
+  originCity: string;
+
+  @Column({ nullable: true })
+  destinationCity: string;
+
   // Origin & Destination
   @Column({ type: 'enum', enum: OriginCountry })
   origin: OriginCountry;
@@ -65,6 +71,12 @@ export class Shipment {
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   declaredValue: number;
+
+  @Column({ nullable: true })
+  dimensions: string;
+
+  @Column({ nullable: true })
+  serviceType: string;
 
   @Column({ nullable: true })
   description: string;
@@ -100,6 +112,13 @@ export class Shipment {
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'agentId' })
   agent: User;
+
+  @Column({ nullable: true })
+  createdById: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'createdById' })
+  createdBy: User;
 
   // Dates
   @Column({ nullable: true })

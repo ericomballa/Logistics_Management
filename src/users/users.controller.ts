@@ -39,6 +39,8 @@ export class UsersController {
   @ApiResponse({ status: 201, description: 'User created successfully' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
   create(@Body() createUserDto: CreateUserDto) {
+    console.log(createUserDto);
+
     return this.usersService.create(createUserDto);
   }
 

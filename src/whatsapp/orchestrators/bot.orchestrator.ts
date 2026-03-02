@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
 import { WhatsappApiService } from '../services/whatsapp-api.service';
 import { AIService } from '../services/ai.service';
 import { ConversationService } from '../services/conversation.service';
@@ -10,9 +10,9 @@ import { UpdateShipmentDto } from '../../shipments/dto/update-shipment.dto';
 import { OriginCountry } from '../../shipments/enums/origin-country.enum';
 import { DestinationCountry } from '../../shipments/enums/destination-country.enum';
 import { ShipmentStatus } from '../../shipments/enums/shipment-status.enum';
-import { User } from '../../users/entities/user.entity';
+import { User } from '../../users/schemas/user.schema';
 import { UserRole } from '../../users/enums/user-role.enum';
-import { WhatsappUser } from '../entities/whatsapp-user.entity';
+import { WhatsappUser } from '../schemas/whatsapp-user.schema';
 
 @Injectable()
 export class WhatsappBotOrchestrator {
@@ -23,10 +23,10 @@ export class WhatsappBotOrchestrator {
     private aiService: AIService,
     private conversationService: ConversationService,
     private shipmentService: ShipmentsService,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
-    @InjectRepository(WhatsappUser)
-    private whatsappUserRepository: Repository<WhatsappUser>,
+    @InjectModel(User.name)
+    private userModel: Model<User>,
+    @InjectModel(WhatsappUser.name)
+    private whatsappUserModel: Model<WhatsappUser>,
   ) {}
 
   async handleIncomingMessage(
@@ -43,27 +43,25 @@ export class WhatsappBotOrchestrator {
       const whatsappUser = await this.conversationService.getOrCreateUser(from, userName);
 
       // Essayer de trouver un utilisateur existant avec le même numéro de téléphone
-      let existingUser = await this.userRepository.findOne({
-        where: { phone: from },
-      });
+      let existingUser = await this.userModel.findOne({ phone: from }).exec();
 
       // Si aucun utilisateur existant trouvé, créer un utilisateur client basique
       if (!existingUser) {
-        existingUser = this.userRepository.create({
+        existingUser = await this.userModel.create({
           phone: from,
           name: whatsappUser.name || 'WhatsApp User',
           email: `${from}@whatsapp-client.com`,
           role: UserRole.CLIENT,
           isActive: true,
         });
-        existingUser = await this.userRepository.save(existingUser);
+        await existingUser.save();
       }
 
       // Obtenir la conversation active
-      const conversation = await this.conversationService.getActiveConversation(whatsappUser.id);
+      const conversation = await this.conversationService.getActiveConversation(whatsappUser._id.toString());
 
       // Sauvegarder le message de l'utilisateur
-      await this.conversationService.saveMessage(conversation.id, messageText, 'user', messageId);
+      await this.conversationService.saveMessage(conversation._id.toString(), messageText, 'user', messageId);
 
       // Vérifier si c'est un numéro de suivi
       if (await this.handleTrackingQuery(messageText, from)) {
@@ -72,11 +70,11 @@ export class WhatsappBotOrchestrator {
 
       // Vérifier si c'est une demande de création d'envoi
       if (this.isShipmentCreationIntent(messageText)) {
-        await this.conversationService.updateConversationStep(conversation.id, 'creating_shipment');
+        await this.conversationService.updateConversationStep(conversation._id.toString(), 'creating_shipment');
       }
 
       // Obtenir l'historique
-      const history = await this.conversationService.getConversationHistory(conversation.id, 10);
+      const history = await this.conversationService.getConversationHistory(conversation._id.toString(), 10);
       const reversedHistory = history.reverse();
 
       // Générer une réponse avec l'IA
@@ -87,13 +85,13 @@ export class WhatsappBotOrchestrator {
       );
 
       // Sauvegarder la réponse
-      await this.conversationService.saveMessage(conversation.id, aiResponse, 'bot');
+      await this.conversationService.saveMessage(conversation._id.toString(), aiResponse, 'bot');
 
       // Envoyer la réponse
       await this.whatsappService.sendTextMessage(from, aiResponse);
 
       // Traiter les intentions spéciales
-      await this.processSpecialIntents(messageText, conversation, existingUser.id, from);
+      await this.processSpecialIntents(messageText, conversation, existingUser._id.toString(), from);
     } catch (error) {
       this.logger.error(`Erreur traitement message: ${error.message}`);
       await this.whatsappService.sendTextMessage(
@@ -127,7 +125,7 @@ ${statusText}
 
 💰 Coût: ${shipment.declaredValue?.toLocaleString('fr-FR')} FCFA
 
-📅 Créé le: ${new Date(shipment.createdAt).toLocaleDateString('fr-FR')}
+📅 Créé le: ${new Date(shipment.createdAt as any).toLocaleDateString('fr-FR')}
 
 Pour toute question, répondez à ce message !
             `.trim();
@@ -178,7 +176,7 @@ Pour toute question, répondez à ce message !
         lowerMessage.includes('confirmer') ||
         lowerMessage.includes('valider'))
     ) {
-      const history = await this.conversationService.getConversationHistory(conversation.id, 20);
+      const history = await this.conversationService.getConversationHistory(conversation._id.toString(), 20);
       const shipmentInfo = await this.aiService.extractShipmentInfo(history.reverse());
 
       if (shipmentInfo && shipmentInfo.origin && shipmentInfo.weight) {
@@ -217,7 +215,7 @@ Pour toute question, répondez à ce message !
           };
 
           // Créer l'envoi via le service existant
-          const shipment = await this.shipmentService.create(createShipmentDto, userId);
+          const shipment = await this.shipmentService.create(createShipmentDto, userId, 'WhatsApp Bot');
 
           const confirmationMessage = `
 ✅ *Envoi créé avec succès !*
@@ -234,7 +232,7 @@ Conservez votre numéro de suivi pour suivre votre colis ! 📱
           `.trim();
 
           await this.whatsappService.sendTextMessage(from, confirmationMessage);
-          await this.conversationService.updateConversationStep(conversation.id, 'completed');
+          await this.conversationService.updateConversationStep(conversation._id.toString(), 'completed');
         } catch (error) {
           this.logger.error(`Erreur création envoi: ${error.message}`);
           await this.whatsappService.sendTextMessage(
@@ -282,9 +280,10 @@ Veuillez fournir ces détails pour que je puisse créer votre envoi.
   private async isUserAgent(phoneNumber: string): Promise<boolean> {
     try {
       // Rechercher l'utilisateur par numéro de téléphone
-      const user = await this.userRepository.findOne({
-        where: { phone: phoneNumber, role: UserRole.AGENT },
-      });
+      const user = await this.userModel.findOne({
+        phone: phoneNumber,
+        role: UserRole.AGENT,
+      }).exec();
 
       // Retourner vrai si un utilisateur avec le rôle AGENT est trouvé
       return !!user;
@@ -310,7 +309,7 @@ Veuillez fournir ces détails pour que je puisse créer votre envoi.
 
           // Mettre à jour le colis
           const updateDto: UpdateShipmentDto = { status: newStatus as ShipmentStatus };
-          await this.shipmentService.update(shipment.id, updateDto, userId);
+          await this.shipmentService.update(shipment._id.toString(), updateDto, userId);
 
           await this.whatsappService.sendTextMessage(
             from,
@@ -334,7 +333,7 @@ Veuillez fournir ces détails pour que je puisse créer votre envoi.
       if (trackingNumber && note) {
         try {
           // Trouver le colis
-          const shipment = await this.shipmentService.findByTrackingNumber(trackingNumber);
+          await this.shipmentService.findByTrackingNumber(trackingNumber);
 
           // Ajouter un événement de suivi (vous devrez peut-être étendre le service pour cela)
           await this.whatsappService.sendTextMessage(

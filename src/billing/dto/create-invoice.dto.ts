@@ -60,4 +60,13 @@ export class CreateInvoiceDto {
   @IsOptional()
   @IsDateString()
   dueDate?: string;
+
+  @ApiProperty({
+    example: 'uuid-user-id',
+    required: false,
+    description: 'ID of the user who created this invoice',
+  })
+  @IsOptional()
+  @IsString()
+  createdById?: string;
 }

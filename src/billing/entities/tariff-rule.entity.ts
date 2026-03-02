@@ -29,7 +29,7 @@ export class TariffRule {
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   ratePerCbm: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0, nullable: true })
   insuranceRate: number;
 
   @Column({ default: true })

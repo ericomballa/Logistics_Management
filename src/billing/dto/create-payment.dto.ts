@@ -1,64 +1,88 @@
-import { IsString, IsNumber, IsEnum, IsOptional, Min } from 'class-validator';
+import { IsString, IsNumber, IsPositive, IsEnum, IsOptional, IsUUID, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { PaymentMethod } from '../enums/payment-method.enum';
+
+export enum PaymentMethod {
+  CASH = 'CASH',
+  BANK_TRANSFER = 'BANK_TRANSFER',
+  MOBILE_MONEY = 'MOBILE_MONEY',
+  CREDIT_CARD = 'CREDIT_CARD',
+  OTHER = 'OTHER',
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED',
+}
 
 export class CreatePaymentDto {
   @ApiProperty({
-    example: 'uuid-invoice-id',
-    description: 'ID of the invoice being paid',
-  })
-  @IsString()
-  invoiceId: string;
-
-  @ApiProperty({
-    example: 25000,
-    description: 'Payment amount in FCFA',
+    example: 50000,
+    description: 'Amount of the payment (in FCFA)',
   })
   @IsNumber()
-  @Min(0, { message: 'Amount must be positive' })
+  @IsPositive()
   amount: number;
 
   @ApiProperty({
+    example: 'CASH',
     enum: PaymentMethod,
-    example: PaymentMethod.MTN_MOMO,
     description: 'Payment method used',
   })
   @IsEnum(PaymentMethod)
   method: PaymentMethod;
 
   @ApiProperty({
-    example: 'MTN-TXN-123456789',
+    example: 'COMPLETED',
+    enum: PaymentStatus,
+    default: PaymentStatus.COMPLETED,
+    description: 'Status of the payment',
+  })
+  @IsOptional()
+  @IsEnum(PaymentStatus)
+  status?: PaymentStatus = PaymentStatus.COMPLETED;
+
+  @ApiProperty({
+    example: 'Transaction123',
     required: false,
-    description: 'Transaction ID from payment provider',
+    description: 'External transaction ID from payment processor',
   })
   @IsOptional()
   @IsString()
   transactionId?: string;
 
   @ApiProperty({
-    example: 'REF-2025-001',
+    example: 'Paiement pour la facture #INV-001',
     required: false,
-    description: 'Internal payment reference',
-  })
-  @IsOptional()
-  @IsString()
-  reference?: string;
-
-  @ApiProperty({
-    example: 'Partial payment - first installment',
-    required: false,
-    description: 'Additional notes about the payment',
+    description: 'Notes about the payment',
   })
   @IsOptional()
   @IsString()
   notes?: string;
 
   @ApiProperty({
-    example: 'uuid-agent-id',
-    required: false,
-    description: 'ID of the agent who processed the payment',
+    example: 'INV-001',
+    description: 'Invoice ID this payment is for',
+  })
+  @IsUUID()
+  invoiceId: string;
+
+  @ApiProperty({
+    example: 'XAF',
+    default: 'XAF',
+    description: 'Currency of the payment',
   })
   @IsOptional()
   @IsString()
-  processedBy?: string;
+  currency?: string = 'XAF';
+
+  @ApiProperty({
+    example: 'PAY-REF-001',
+    required: false,
+    description: 'Payment reference',
+  })
+  @IsOptional()
+  @IsString()
+  reference?: string;
 }
